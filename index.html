@@ -315,8 +315,8 @@ function delRecipe(id){
 
 document.addEventListener('click',function(e){
   var t=e.target;
-  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='inv'){var id=parseInt(t.getAttribute('data-id'));showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">确定要删除此食材吗？</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" onclick="hideModal();delInv(id)">确认删除</button></div>')}
-  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='recipe'){var id=parseInt(t.getAttribute('data-id'));showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">确定要删除此菜谱吗？</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" onclick="hideModal();delRecipe(id)">确认删除</button></div>')}})
+  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='inv'){var id=parseInt(t.getAttribute('data-id'));showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">确定要删除此食材吗？</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="confirmDelBtn">确认删除</button></div>');document.getElementById('confirmDelBtn').addEventListener('click',function(){hideModal();delInv(id)})}
+  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='recipe'){var id=parseInt(t.getAttribute('data-id'));showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">确定要删除此菜谱吗？</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="confirmDelBtn">确认删除</button></div>');document.getElementById('confirmDelBtn').addEventListener('click',function(){hideModal();delRecipe(id)})}})
 document.getElementById('locFilter').addEventListener('change',function(){locFilter=this.value;render()});
 document.getElementById('sortDurationBtn').addEventListener('click',function(){sortAsc=!sortAsc;this.textContent=sortAsc?'⏱️ 最新在前':'⏱️ 按时长排序';render()});
 document.getElementById('addInvBtn').addEventListener('click',function(){showAddInv()});
@@ -401,7 +401,7 @@ async function aiAnalyze(raw){
       body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:'你是李阿姨小饭桌的AI助手。返回纯JSON。可用位置：'+locs+'。现有食材：'+items+'。action类型及其必填字段：add_stock(进货)需item(食材名)、qty(数量带单位如2斤)、loc(位置)。use_stock(消耗)需item、qty。set_stock(设置)需item、qty。delete_stock(删除)需name。move_stock(转移)需item、qty、from_loc、to_loc。add_recipe(新菜谱)需name。recipe_ingredients(设食材)需name、ingredients。query(查询)需name。new_location(新位置)需loc。ask_qty(追问)需prompt。规则：数量必须带单位如2斤。如果位置不存在返回new_location。只说了食材没提数量返回ask_qty。如有多条用JSON数组。'},{role:'user',content:txt}]})});
     if(!r.ok)throw new Error('API '+r.status);
     var d=await r.json(),reply=d.choices[0].message.content.trim();
-    if(reply.indexOf('[')===0){var arr=JSON.parse(reply);return arr[0]}
+    if(reply.indexOf('[')===0){var arr=JSON.parse(reply);return arr}
     if(reply.indexOf('`')!==-1)reply=reply.replace(/`(?:json)?\n?/g,'').trim();
     var res=JSON.parse(reply);
     if(!res.action)throw new Error('no action');
@@ -418,7 +418,7 @@ function execAI(res){
   if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){return s.name===res.item&&s.loc===lc});if(dup){dup.qty=res.qty;dup.createdAt=Date.now();addLog('✅ 更新 '+res.item+' '+res.qty+'('+lc+')','AI')}else{DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 '+res.item+' '+res.qty+'('+lc+')','AI')}saveData(DB);render();toast('✅ '+desc);return}
   if(a==='use_stock'||a==='set_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}f.qty=res.qty;f.createdAt=Date.now();saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
   if(a==='delete_stock'){var idx=DB.inventory.findIndex(function(s){return s.name===res.name});if(idx===-1){toast('❌ 没有 '+res.name);addLog('❌ 未找到 '+res.name,'AI');return}DB.inventory.splice(idx,1);saveData(DB);render();toast('🗑️ '+desc);addLog('🗑️ '+desc,'AI');return}
-  if(a==='move_stock'){var src=DB.inventory.find(function(s){return s.name===res.item&&s.loc===res.from_loc});if(!src){toast('❌ 未找到');return}var dst=DB.inventory.find(function(s){return s.name===res.item&&s.loc===res.to_loc});if(!dst){DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:res.to_loc,createdAt:src.createdAt,_new:true})}saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
+  if(a==='move_stock'){var src=DB.inventory.find(function(s){return s.name===res.item&&s.loc===res.from_loc});if(!src){toast('❌ 未找到');return}var moveQty=res.qty;var sq=src.qty.match(/^(\d+(?:\.\d+)?)(.*)/);var mq=moveQty.match(/^(\d+(?:\.\d+)?)(.*)/);if(sq&&mq&&sq[2]===mq[2]){var n=parseFloat(sq[1])-parseFloat(mq[1]);if(n<=0){DB.inventory=DB.inventory.filter(function(s){return s!==src})}else{src.qty=n+sq[2]}}else{DB.inventory=DB.inventory.filter(function(s){return s!==src})}var dst=DB.inventory.find(function(s){return s.name===res.item&&s.loc===res.to_loc});if(!dst){DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:moveQty,loc:res.to_loc,createdAt:src.createdAt,_new:true})}else{dst.qty=moveQty;if(!dst.createdAt)dst.createdAt=src.createdAt}saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
   if(a==='add_recipe'){if(DB.recipes.find(function(r){return r.name===res.name})){toast('⚠️ 菜谱已存在');return}DB.recipes.push({id:DB.nextRecipeId++,name:res.name,ingredients:'（待补充）',_new:true});saveData(DB);render();toast('➕ '+desc);addLog('➕ '+desc,'AI');return}
   if(a==='recipe_ingredients'){var f=DB.recipes.find(function(r){return r.name===res.name});if(f)f.ingredients=res.ingredients;else DB.recipes.push({id:DB.nextRecipeId++,name:res.name,ingredients:res.ingredients,_new:true});saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
   if(a==='query'){var f=DB.inventory.find(function(s){return s.name===res.name});if(f){toast('🔍 '+res.name+': '+f.qty+' 在'+f.loc);addLog('🔍 '+res.name+': '+f.qty+' '+f.loc,'AI')}else{toast('🔍 没有 '+res.name);addLog('🔍 未找到 '+res.name,'AI')}render()}
@@ -444,7 +444,7 @@ async function stopListening(quiet){
   if(!quiet&&finalTranscript.trim()){
     aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI 分析中...</span></div>';
     setStatus('processing','🤖 AI分析中...');
-    try{var r=await aiAnalyze(finalTranscript);var ie=r.action==='unknown';var si=ie?'<span style="color:#e74c3c">❌</span>':'<span style="color:#2d6a4f">✅</span>';
+    try{var r=await aiAnalyze(finalTranscript);var results=Array.isArray(r)?r:[r];var lastResult=r;var ie=lastResult.action==='unknown';var si=ie?'<span style="color:#e74c3c">❌</span>':'<span style="color:#2d6a4f">✅</span>';
       var h='<div style="display:flex;align-items:center">'+si+' <span>📝 '+r.desc+'</span></div>';
       if(r.action==='add_stock'||r.action==='use_stock'||r.action==='set_stock')h+='<div style="margin-top:4px"><span class="tag">操作</span> <span class="key">'+r.item+'</span> → <span class="key">'+r.qty+'</span></div>';
       else if(r.action==='delete_stock')h+='<div style="margin-top:4px"><span class="tag">操作</span> 删除 <span class="key">'+r.name+'</span></div>';
@@ -452,7 +452,7 @@ async function stopListening(quiet){
       else if(r.action==='add_recipe')h+='<div style="margin-top:4px"><span class="tag">操作</span> 新菜谱 <span class="key">'+r.name+'</span></div>';
       else if(r.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+r.loc+'</span></div>';
       else if(r.action==='ask_qty')h+='<div style="margin-top:4px"><span class="tag">追问</span> '+r.prompt+'</div>';
-      aR.innerHTML=h;setStatus('done','✅ 已完成');execAI(r)}
+      aR.innerHTML=h;setStatus('done','✅ 已完成');results.forEach(function(item){execAI(item)})}
     catch(e){aR.innerHTML='<div><span style="color:#e74c3c">❌</span> <span>AI请求失败: '+e.message+'</span></div>';setStatus('idle','❌ 分析失败')}}
   else if(!quiet){setStatus('idle','就绪，点击 🎤 开始语音输入')}}
 
@@ -486,7 +486,7 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
       else if(r.action==='add_recipe')h+='<div style=margin-top:4px><span class=tag>操作</span> 新菜谱 <span class=key>'+r.name+'</span></div>';
       else if(r.action==='new_location')h+='<div style=margin-top:4px><span class=tag>新位置</span> <span class=key>'+r.loc+'</span></div>';
       else if(r.action==='ask_qty')h+='<div style=margin-top:4px><span class=tag>追问</span> '+r.prompt+'</div>';
-      aR.innerHTML=h; setStatus('done','已完成'); execAI(r);
+      aR.innerHTML=h; setStatus('done','已完成'); results.forEach(function(item){execAI(item)});
     }).catch(function(e){
       aR.innerHTML='<div><span style=color:#e74c3c>X</span> <span>AI请求失败: '+e.message+'</span></div>';
       setStatus('idle','分析失败');
@@ -591,6 +591,8 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
+
 
 
 
