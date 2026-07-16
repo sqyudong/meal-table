@@ -55,6 +55,7 @@ td.loc{font-size:12px;color:#888}
 .log-list{max-height:150px;overflow-y:auto;font-size:12px;color:#666}
 .log-item{padding:4px 0;border-bottom:1px solid #fef5e7;display:flex;gap:6px;font-size:12px}
 .log-item .time{color:#ccc;font-size:10px;white-space:nowrap;min-width:44px}
+.log-item .user{color:#e85d04;font-size:10px;white-space:nowrap;min-width:28px;font-weight:500}
 .log-item .op-tag{color:#e85d04;font-size:10px;white-space:nowrap}
 .fab{position:fixed;bottom:28px;right:20px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff;border:none;font-size:26px;box-shadow:0 4px 20px rgba(220,47,2,.35);cursor:pointer;z-index:99;display:flex;align-items:center;justify-content:center}
 .fab.listening{box-shadow:0 4px 30px rgba(220,47,2,.6);animation:micPulse 1s ease-in-out infinite}
@@ -76,7 +77,7 @@ td.loc{font-size:12px;color:#888}
 #loginScreen .form-group input:focus{border-color:#e85d04}
 #loginScreen .login-btn{width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff;font-size:16px;font-weight:600;cursor:pointer}
 #loginScreen .error-msg{color:#dc2f02;font-size:12px;text-align:center;margin-top:8px;min-height:18px}
-#modalOverlay{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:20px}
+#modalOverlay{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.4);display:none;align-items:flex-start;justify-content:center;padding:60px 20px 20px}
 #modalOverlay.show{display:flex}
 #modalOverlay .modal{background:#fff;border-radius:16px;padding:24px 20px;width:100%;max-width:340px;max-height:80vh;overflow-y:auto}
 #modalOverlay .modal h3{font-size:16px;margin-bottom:14px;color:#3d2b1f}
@@ -119,6 +120,10 @@ td.loc{font-size:12px;color:#888}
     <h2>登录</h2>
     <div class="form-group"><input type="text" id="loginUser" placeholder="输入账号" autocomplete="off"></div>
     <div class="form-group"><input type="password" id="loginPass" placeholder="输入密码"></div>
+    <div class="form-group" style="display:flex;gap:12px;font-size:12px;color:#888">
+      <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="remUser" checked> 记住账号</label>
+      <label style="display:flex;align-items:center;gap:4px"><input type="checkbox" id="remPass" checked> 记住密码</label>
+    </div>
     <button class="login-btn" id="loginBtn">登 录</button>
     <div class="error-msg" id="loginError"></div>
   </div>
@@ -166,7 +171,7 @@ td.loc{font-size:12px;color:#888}
   <div class="analysis" id="analysisResult"></div>
 </div>
 <div class="log-card">
-  <div class="label">📋 操作记录 <span style="font-size:10px;color:#ccc;cursor:pointer" id="logClearBtn">清空</span></div>
+  <div class="label">📋 操作记录 <span style="font-size:10px;color:#ccc;cursor:pointer" id="logClearBtn">清空</span> <span style="font-size:10px;color:#e85d04;cursor:pointer;margin-left:8px" id="showAllLogsBtn">显示全部</span></div>
   <div class="log-list" id="logList"><div class="empty-msg">暂无操作记录</div></div>
 </div>
 <button class="fab" id="micBtn">🎤</button>
@@ -203,7 +208,7 @@ function loadData(){
 function saveData(d){localStorage.setItem(DB_KEY,JSON.stringify(d))}
 function getDB(){return loadData()}
 
-var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null;
+var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false;
 var iB=document.getElementById('invBody'),rB=document.getElementById('recipeBody'),iC=document.getElementById('invCount'),rC=document.getElementById('recipeCount');
 var sD=document.getElementById('statusDot'),sT=document.getElementById('statusText'),vC=document.getElementById('voiceCard'),rT=document.getElementById('recogText'),aR=document.getElementById('analysisResult');
 var lL=document.getElementById('logList'),mB=document.getElementById('micBtn'),fL=document.getElementById('fabLabel'),tE=document.getElementById('toast'),tTimer=null;
@@ -215,10 +220,11 @@ function addLog(msg,tp){
   var e=lL.querySelector('.empty-msg');if(e)e.remove();
   var d=document.createElement('div');d.className='log-item';
   var n=new Date(),ti=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+  var un=(currentUser&&currentUser.name)?currentUser.name:'系统';
   var tag=tp?'<span class="op-tag">['+tp+']</span>':'';
-  d.innerHTML='<span class="time">'+ti+'</span>'+tag+'<span class="msg">'+msg+'</span>';
-  lL.prepend(d);if(lL.children.length>50)lL.lastChild.remove();
-  DB.logs.push({time:ti,msg:msg,op:tp||''});if(DB.logs.length>200)DB.logs.splice(0,DB.logs.length-200);saveData(DB)}
+  d.innerHTML='<span class="time">'+ti+'</span><span class="user">'+un+'</span>'+tag+'<span class="msg">'+msg+'</span>';
+  
+  DB.logs.push({time:ti,ts:Date.now(),msg:msg,op:tp||'',user:un});if(DB.logs.length>200)DB.logs.splice(0,DB.logs.length-200);saveData(DB)}
 function fmtDur(c){
   var d=Date.now()-c,h=Math.floor(d/3600000),da=Math.floor(h/24);
   if(h<1)return'刚刚';if(h<24)return h+'小时';return h+'小时 ('+da+'天)'}
@@ -301,7 +307,7 @@ document.getElementById('sortDurationBtn').addEventListener('click',function(){s
 document.getElementById('addInvBtn').addEventListener('click',function(){showAddInv()});
 document.getElementById('addRecipeBtn').addEventListener('click',function(){showAddRecipe()});
 document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});b.classList.add('active');var t=b.getAttribute('data-tab');document.getElementById('tabInv').style.display=t==='inv'?'':'none';document.getElementById('tabRecipe').style.display=t==='recipe'?'':'none'})});
-document.getElementById('logClearBtn').addEventListener('click',function(){DB=getDB();DB.logs=[];saveData(DB);lL.innerHTML='<div class="empty-msg">暂无操作记录</div>';toast('✅ 已清空')});
+document.getElementById('logClearBtn').addEventListener('click',function(){DB=getDB();DB.logs=[];saveData(DB);renderLogs();toast('✅ 已清空')});document.getElementById('showAllLogsBtn').addEventListener('click',function(){logShowAll=!logShowAll;this.textContent=logShowAll?'显示最近':'显示全部';renderLogs()});
 
 // Login
 function login(u,p){
@@ -336,7 +342,7 @@ async function aiAnalyze(raw){
   try{
     var r=await fetch('https://api.deepseek.com/v1/chat/completions',{
       method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+DSK},
-      body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:'你是李阿姨小饭桌的AI助手。返回纯JSON。可用位置：'+locs+'。现有食材：'+items+'。action类型：add_stock(进货) use_stock(消耗) set_stock(设置) delete_stock(删除) move_stock(转移) add_recipe(新菜谱) recipe_ingredients(设食材) query(查询) new_location(新位置) ask_qty(追问)。规则：数量带单位如2斤。如果位置不存在返回new_location。只说了食材没提数量返回ask_qty。如有多条用JSON数组。'},{role:'user',content:txt}]})});
+      body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:'你是李阿姨小饭桌的AI助手。返回纯JSON。可用位置：'+locs+'。现有食材：'+items+'。action类型及其必填字段：add_stock(进货)需item(食材名)、qty(数量带单位如2斤)、loc(位置)。use_stock(消耗)需item、qty。set_stock(设置)需item、qty。delete_stock(删除)需name。move_stock(转移)需item、qty、from_loc、to_loc。add_recipe(新菜谱)需name。recipe_ingredients(设食材)需name、ingredients。query(查询)需name。new_location(新位置)需loc。ask_qty(追问)需prompt。规则：数量必须带单位如2斤。如果位置不存在返回new_location。只说了食材没提数量返回ask_qty。如有多条用JSON数组。'},{role:'user',content:txt}]})});
     if(!r.ok)throw new Error('API '+r.status);
     var d=await r.json(),reply=d.choices[0].message.content.trim();
     if(reply.indexOf('[')===0){var arr=JSON.parse(reply);return arr[0]}
@@ -368,12 +374,12 @@ function startListening(){
   setStatus('idle','请求麦克风权限...');
   navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){
     s.getTracks().forEach(function(t){t.stop()});
-    finalTranscript='';isListening=true;aR.innerHTML='';vC.classList.remove('show');
+    finalTranscript='';isListening=true;userStoppedRecognition=false;aR.innerHTML='';vC.classList.remove('show');
     var r=new SR();r.lang='zh-CN';r.continuous=true;r.interimResults=true;r.maxAlternatives=1;
     r.onstart=function(){setStatus('listening','🎤 聆听中... 再次点击停止');mB.classList.add('listening');mB.textContent='🔴';fL.textContent='点击停止';fL.classList.add('active')};
     r.onresult=function(e){var im='';for(var i=e.resultIndex;i<e.results.length;i++){var t=e.results[i][0].transcript;if(e.results[i].isFinal)finalTranscript+=t;else im+=t}rT.textContent=finalTranscript+im;vC.classList.add('show')};
     r.onerror=function(e){if(e.error==='not-allowed'){setStatus('idle','⚠️ 需允许麦克风');toast('⚠️ 需要麦克风权限')}stopListening(true)};
-    r.onend=function(){if(isListening){try{r.start()}catch(e){}}};recognition=r;r.start()})
+    r.onend=function(){if(isListening&&!userStoppedRecognition){try{r.start()}catch(e){}}};recognition=r;r.start()})
   .catch(function(){setStatus('idle','⚠️ 麦克风权限被拒绝');toast('⚠️ 请在浏览器中允许麦克风权限')})}
 
 async function stopListening(quiet){
@@ -433,7 +439,32 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
 
 if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').then(function(){console.log('SW ok')}).catch(function(e){console.log('SW err',e)})}
 
+var ru=localStorage.getItem('rem_user');var rp=localStorage.getItem('rem_pass');if(ru){document.getElementById('loginUser').value=ru}if(rp){document.getElementById('loginPass').value=rp}
+
+// Log display: filter by 2 weeks, show max 4
+var logShowAll=false;
+function renderLogs(){
+  DB=getDB();
+  var twoWeeksAgo=Date.now()-14*24*60*60*1000;
+  var filtered=DB.logs.filter(function(l){return l.ts&&l.ts>twoWeeksAgo||!l.ts});
+  var shown=logShowAll?filtered:filtered.slice(0,4);
+  lL.innerHTML='';
+  if(shown.length===0){lL.innerHTML='<div class="empty-msg">暂无操作记录</div>';return}
+  shown.forEach(function(l){
+    var d=document.createElement('div');d.className='log-item';
+    var un=l.user||'系统';
+    var tag=l.op?'<span class="op-tag">['+l.op+']</span>':'';
+    d.innerHTML='<span class="time">'+l.time+'</span><span class="user">'+un+'</span>'+tag+'<span class="msg">'+l.msg+'</span>';
+    lL.appendChild(d)})
+}
+// Hook renderLogs
+var originalAddLog = addLog;
+addLog = function(msg,tp){
+  originalAddLog(msg,tp);
+  renderLogs();
+};
 // Init
+renderLogs();
 render();
 setStatus('idle','就绪，点击 🎤 开始语音输入');
 
