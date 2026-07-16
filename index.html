@@ -136,7 +136,7 @@ td.loc{font-size:12px;color:#888}
 <div id="appMain" style="display:none">
 <div class="app-header">
   <div class="top-row">
-    <div style="width:80px"></div>
+    <span id="versionDisplay" style="font-size:11px;color:rgba(255,255,255,0.7);white-space:nowrap">V1.0.1</span>
     <div><h1>李阿姨小饭桌</h1><div class="slogan">健康营养美食</div></div>
     <div class="staff-badge" id="staffBadge" title="双击管理账号">
       <span id="roleIcon"></span>
@@ -153,7 +153,7 @@ td.loc{font-size:12px;color:#888}
   <button class="tab" data-tab="recipe">📖 菜谱管理</button>
 </div>
 <div class="section" id="tabInv">
-  <div class="section-title">🏪 仓库 <span class="badge" id="invCount">0 项</span></div>
+  <div class="section-title">🏪 仓库 <span class="badge" id="invCount">0 项</span> <span class="badge" id="invVersionBadge">N0</span></div>
   <div class="toolbar">
     <select id="locFilter"><option value="">📍 全部位置</option></select>
     <button id="sortDurationBtn">⏱️ 按时长排序</button>
@@ -198,6 +198,8 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
+var APP_VERSION = 'V1.0.1';
+var INV_VERSION_KEY = 'inv_ver';
 var defaultAccounts = [
   {username:'admin',password:'admin',role:'admin',name:'管理员'},
   {username:'liqing',password:'liqing',role:'staff',name:'员工'},
@@ -252,7 +254,7 @@ function render(){
       var d=fmtDur(s.createdAt||Date.now()),ex=expCls(s.loc,s.createdAt||Date.now());
       var wi=ex==='exp-warn-yellow'?'⚠️':(ex==='exp-warn-red'?'🚨':'');
       if(ex)tr.className=ex;if(s._new)tr.classList.add('fade-in');
-      var cd=isAdmin;
+      var cd=true;
       tr.innerHTML='<td class="seq">'+(i+1)+'</td><td class="name">'+s.name+'</td><td class="qty">'+s.qty+'</td><td>'+wi+' '+d+'</td><td class="loc">'+s.loc+'</td>'+(cd?'<td><button class="del-btn" data-id="'+s.id+'" data-type="inv">✕</button></td>':'<td></td>');
       iB.appendChild(tr)})}
   iC.textContent=DB.inventory.length+' 项';
@@ -260,14 +262,14 @@ function render(){
   if(DB.recipes.length===0){rB.innerHTML='<tr><td colspan="3" class="empty-msg">暂无菜谱</td></tr>'}else{
     DB.recipes.forEach(function(r){
       var tr=document.createElement('tr');if(r._new)tr.classList.add('fade-in');
-      var cd=isAdmin;
+      var cd=true;
       tr.innerHTML='<td class="name">'+r.name+'</td><td>'+r.ingredients+'</td>'+(cd?'<td><button class="del-btn" data-id="'+r.id+'" data-type="recipe">✕</button></td>':'<td></td>');
       rB.appendChild(tr)})}
   rC.textContent=DB.recipes.length+' 道';
   var sel=document.getElementById('locFilter'),cv=sel.value;
   sel.innerHTML='<option value="">📍 全部位置</option>';
   DB.locations.forEach(function(l){var o=document.createElement('option');o.value=l;o.textContent=l;if(l===cv)o.selected=true;sel.appendChild(o)});
-  setTimeout(function(){DB.inventory.forEach(function(s){delete s._new});DB.recipes.forEach(function(r){delete r._new});saveData(DB)},600)}
+  setTimeout(function(){DB.inventory.forEach(function(s){delete s._new});DB.recipes.forEach(function(r){delete r._new});saveData(DB)},600);var _iv=parseInt(localStorage.getItem(INV_VERSION_KEY)||'0');document.getElementById('invVersionBadge').textContent='N'+_iv;document.getElementById('versionDisplay').textContent=APP_VERSION}
 
 function showModal(html){mC.innerHTML=html;mO.classList.add('show')}
 function hideModal(){mO.classList.remove('show')}
@@ -307,8 +309,8 @@ function delRecipe(id){
 
 document.addEventListener('click',function(e){
   var t=e.target;
-  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='inv'){var id=parseInt(t.getAttribute('data-id'));if(confirm('确定删除此食材？'))delInv(id)}
-  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='recipe'){var id=parseInt(t.getAttribute('data-id'));if(confirm('确定删除此菜谱？'))delRecipe(id)}})
+  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='inv'){var id=parseInt(t.getAttribute('data-id'));showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">确定要删除此食材吗？</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" onclick="hideModal();delInv(id)">确认删除</button></div>')}
+  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='recipe'){var id=parseInt(t.getAttribute('data-id'));showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">确定要删除此菜谱吗？</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" onclick="hideModal();delRecipe(id)">确认删除</button></div>')}})
 document.getElementById('locFilter').addEventListener('change',function(){locFilter=this.value;render()});
 document.getElementById('sortDurationBtn').addEventListener('click',function(){sortAsc=!sortAsc;this.textContent=sortAsc?'⏱️ 最新在前':'⏱️ 按时长排序';render()});
 document.getElementById('addInvBtn').addEventListener('click',function(){showAddInv()});
@@ -582,3 +584,9 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
+
+
+
+
+
