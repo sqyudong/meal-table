@@ -1,14 +1,64 @@
-﻿{
+{
   "accounts": [
-    {"username":"admin","password":"admin","role":"admin","name":"管理员"},
-    {"username":"liqing","password":"liqing","role":"staff","name":"员工"},
-    {"username":"shenwen","password":"shenwen","role":"staff","name":"员工"},
-    {"username":"yanbo","password":"yanbo","role":"staff","name":"员工"}
+    {
+      "username": "admin",
+      "password": "admin",
+      "role": "admin",
+      "name": "管理员"
+    },
+    {
+      "username": "liqing",
+      "password": "liqing",
+      "role": "staff",
+      "name": "员工"
+    },
+    {
+      "username": "shenwen",
+      "password": "shenwen",
+      "role": "staff",
+      "name": "员工"
+    },
+    {
+      "username": "yanbo",
+      "password": "yanbo",
+      "role": "staff",
+      "name": "员工"
+    }
   ],
-  "locations": ["常温","1号冰箱","2号冰箱","3号冰箱","1号冰柜","2号冰柜","3号冰柜"],
-  "inventory": [],
+  "locations": [
+    "常温",
+    "1号冰箱",
+    "2号冰箱",
+    "3号冰箱",
+    "1号冰柜",
+    "2号冰柜",
+    "3号冰柜"
+  ],
+  "inventory": [
+    {
+      "id": 1,
+      "name": "胡萝卜",
+      "qty": "3斤",
+      "loc": "常温",
+      "createdAt": 1784210470549
+    },
+    {
+      "id": 2,
+      "name": "洋葱",
+      "qty": "4个",
+      "loc": "常温",
+      "createdAt": 1784203270549
+    },
+    {
+      "id": 3,
+      "name": "羊肉",
+      "qty": "5斤",
+      "loc": "1号冰柜",
+      "createdAt": 1784203270549
+    }
+  ],
   "recipes": [],
   "logs": [],
-  "nextInvId": 1,
+  "nextInvId": 4,
   "nextRecipeId": 1
 }
