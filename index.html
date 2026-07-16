@@ -109,6 +109,7 @@ td.loc{font-size:12px;color:#888}
 .input-bar .send-btn:active{opacity:.8}
 .input-bar .send-btn::before{content:'\0021d1'}
 </style>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
 </head>
 <body>
 <!-- Login Screen -->
@@ -329,11 +330,51 @@ document.getElementById('staffBadge').addEventListener('dblclick',function(){
   if(!isAdmin){toast('⛔ 仅管理员可管理账号');return}
   DB=getDB();
   var list=DB.accounts.map(function(a){var rl=a.role==='admin'?'管理员':'操作员',isSelf=currentUser&&a.username===currentUser.username;var db=(a.role!=='admin'&&!isSelf)?'<button class="del-account-btn" data-user="'+a.username+'">✕</button>':'';return'<div class="account-item"><div class="info"><div class="avatar">'+a.name.charAt(0)+'</div><div><div class="name">'+a.name+'</div><span class="role-tag">'+rl+'</span></div></div>'+db+'</div>'}).join('');
-  showModal('<h3>👥 账号管理</h3>'+list+'<div class="modal-btns" style="margin-top:12px"><button class="btn-cancel" onclick="hideModal()">关闭</button><button class="btn-confirm" id="showAddAccBtn">+ 添加操作员</button></div>');
+  showModal('<h3>👥 账号管理</h3>'+list+'<div class="modal-btns" style="margin-top:12px"><button class="btn-cancel" onclick="hideModal()">关闭</button><button class="btn-confirm" id="importExcelBtn" style="margin-right:4px">📥 导入Excel</button><button class="btn-confirm" id="showAddAccBtn">+ 添加操作员</button></div>');
   document.getElementById('showAddAccBtn').addEventListener('click',function(){
     showModal('<h3>添加操作员</h3><div class="form-group"><label>姓名</label><input id="nAN" placeholder="如：张三"></div><div class="form-group"><label>账号</label><input id="nAU" placeholder="英文+数字"></div><div class="form-group"><label>密码</label><input id="nAP" type="password"></div><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">返回</button><button class="btn-confirm" id="cAA">添加</button></div>');
     document.getElementById('cAA').addEventListener('click',function(){var nm=document.getElementById('nAN').value.trim(),us=document.getElementById('nAU').value.trim(),pw=document.getElementById('nAP').value.trim();if(!nm||!us||!pw){toast('⚠️ 请完整填写');return}DB=getDB();if(DB.accounts.find(function(a){return a.username===us})){toast('⚠️ 账号已存在');return}DB.accounts.push({username:us,password:pw,role:'staff',name:nm});saveData(DB);addLog('添加 '+nm+'('+us+')','管理');toast('✅ 已添加');hideModal()})});
   document.querySelectorAll('.del-account-btn').forEach(function(b){b.addEventListener('click',function(){var u=this.getAttribute('data-user');if(confirm('确定删除账号 '+u+' ？')){DB=getDB();DB.accounts=DB.accounts.filter(function(a){return a.username!==u});saveData(DB);addLog('删除账号 '+u,'管理');toast('🗑️ 已删除');hideModal()}})});
+// Excel account import
+document.getElementById('importExcelBtn').addEventListener('click',function(){
+  if(typeof XLSX==='undefined'){toast('⚠️ 正在加载Excel解析库，请稍后重试');return}
+  var inp=document.createElement('input');inp.type='file';inp.accept='.xlsx,.xls';
+  inp.onchange=function(e){
+    var file=e.target.files[0];if(!file)return;
+    var reader=new FileReader();
+    reader.onload=function(e){
+      try{
+        var data=new Uint8Array(e.target.result);
+        var wb=XLSX.read(data,{type:'array'});
+        var ws=wb.Sheets[wb.SheetNames[0]];
+        var json=XLSX.utils.sheet_to_json(ws);
+        if(!json||json.length===0){toast('⚠️ Excel文件为空');return}
+        DB=getDB();
+        var added=0;
+        json.forEach(function(row){
+          var u=(row.username||row.账号||row.用户名||'').toString().trim();
+          var p=(row.password||row.密码||'').toString().trim();
+          var n=(row.name||row.姓名||row.名称||'').toString().trim();
+          var r=(row.role||row.角色||'staff').toString().trim();
+          if(!u)return;
+          if(!p)p='123456';
+          if(!n)n=u;
+          if(r!=='admin')r='staff';else r='admin';
+          if(!DB.accounts.find(function(a){return a.username===u})){
+            DB.accounts.push({username:u,password:p,role:r,name:n});
+            added++;
+          }
+        });
+        saveData(DB);
+        hideModal();
+        toast('✅ 已导入 '+added+' 个账号');
+      }catch(ex){toast('❌ Excel解析失败: '+ex.message)}
+    };
+    reader.readAsArrayBuffer(file);
+  };
+  inp.click();
+});
+
 });
 // DeepSeek AI
 var DSK='sk-6f997886ebeb426f9e9a4eb98767e626';
