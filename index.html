@@ -207,7 +207,7 @@ var defaultAccounts = [
 var defaultLocations = ['常温','1号冰箱','2号冰箱','3号冰箱','1号冰柜','2号冰柜','3号冰柜'];
 
 function loadData(){
-  try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes)return d}catch(e){}
+  try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes){var da=JSON.parse(JSON.stringify(defaultAccounts));da.forEach(function(a){if(!d.accounts.find(function(x){return x.username===a.username})){d.accounts.push(a)}});saveData(d);return d}}catch(e){}
   var d={accounts:JSON.parse(JSON.stringify(defaultAccounts)),locations:JSON.parse(JSON.stringify(defaultLocations)),inventory:[],recipes:[],logs:[],nextInvId:1,nextRecipeId:1};
   saveData(d);return d}
 function saveData(d){localStorage.setItem(DB_KEY,JSON.stringify(d))}
