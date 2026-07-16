@@ -10,19 +10,19 @@
       "username": "liqing",
       "password": "liqing",
       "role": "staff",
-      "name": "员工"
+      "name": "李总"
     },
     {
       "username": "shenwen",
       "password": "shenwen",
       "role": "staff",
-      "name": "员工"
+      "name": "沈总"
     },
     {
       "username": "yanbo",
       "password": "yanbo",
       "role": "staff",
-      "name": "员工"
+      "name": "闫博"
     }
   ],
   "locations": [
