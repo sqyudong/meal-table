@@ -411,9 +411,9 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
     if(!txt) return;
     document.getElementById('textInput').value = '';
     setStatus('processing','AI分析中...');
-    voiceCard.classList.add('show');
-    recogText.textContent = '打字: '+txt;
-    analysisResult.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI分析中...</span></div>';
+    vC.classList.add('show');
+    rT.textContent = '打字: '+txt;
+    aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI分析中...</span></div>';
     aiAnalyze(txt).then(function(r){
       var ie=r.action==='unknown';
       var si=ie?'<span style=color:#e74c3c>X</span>':'<span style=color:#2d6a4f>V</span>';
@@ -424,9 +424,9 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
       else if(r.action==='add_recipe')h+='<div style=margin-top:4px><span class=tag>操作</span> 新菜谱 <span class=key>'+r.name+'</span></div>';
       else if(r.action==='new_location')h+='<div style=margin-top:4px><span class=tag>新位置</span> <span class=key>'+r.loc+'</span></div>';
       else if(r.action==='ask_qty')h+='<div style=margin-top:4px><span class=tag>追问</span> '+r.prompt+'</div>';
-      analysisResult.innerHTML=h; setStatus('done','已完成'); execAI(r);
+      aR.innerHTML=h; setStatus('done','已完成'); execAI(r);
     }).catch(function(e){
-      analysisResult.innerHTML='<div><span style=color:#e74c3c>X</span> <span>AI请求失败: '+e.message+'</span></div>';
+      aR.innerHTML='<div><span style=color:#e74c3c>X</span> <span>AI请求失败: '+e.message+'</span></div>';
       setStatus('idle','分析失败');
     });
   }
@@ -447,8 +447,8 @@ setStatus('idle','就绪，点击 🎤 开始语音输入');
 
 /*
 // Uncomment the next 2 lines in index.html <head> to load Firebase SDK
-// <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-// <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+// <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"><\/script>
+// <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"><\/script>
 
 var firebaseConfig = {
   apiKey: "YOUR_API_KEY",
