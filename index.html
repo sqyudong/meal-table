@@ -1,0 +1,502 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#e85d04">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="manifest.json">
+<title>李阿姨小饭桌 - 食材仓库管理</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','PingFang SC','Microsoft YaHei',sans-serif;background:#fef5e7;color:#3d2b1f;min-height:100vh;padding-bottom:100px}
+.app-header{background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff;padding:14px 16px 12px;text-align:center;position:sticky;top:0;z-index:10;box-shadow:0 2px 12px rgba(220,47,2,.3)}
+.app-header .top-row{display:flex;align-items:center;justify-content:space-between}
+.app-header h1{font-size:20px;font-weight:700;letter-spacing:1px}
+.app-header .slogan{font-size:12px;opacity:.9;margin-top:2px;letter-spacing:2px}
+.staff-badge{display:flex;align-items:center;gap:4px;background:rgba(255,255,255,.15);padding:4px 10px;border-radius:8px;font-size:12px;cursor:pointer}
+.tab-bar{display:flex;gap:0;margin:8px 12px 0;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.tab{flex:1;padding:10px 0;text-align:center;font-size:14px;font-weight:600;border:none;background:transparent;color:#999;cursor:pointer}
+.tab.active{background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff;box-shadow:0 2px 8px rgba(220,47,2,.2)}
+.section{margin:12px 12px 0;background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.06);overflow:hidden}
+.section-title{display:flex;align-items:center;gap:6px;padding:12px 14px 8px;font-size:15px;font-weight:600;color:#e85d04;border-bottom:1px solid #fef0e0}
+.section-title .badge{background:#fef0e0;color:#e85d04;font-size:11px;padding:1px 8px;border-radius:8px;margin-left:auto}
+.toolbar{display:flex;gap:6px;padding:8px 12px;flex-wrap:wrap;align-items:center}
+.toolbar select,.toolbar button{font-size:12px;padding:5px 10px;border-radius:8px;border:1px solid #fef0e0;background:#fff;color:#666;cursor:pointer;outline:none}
+.toolbar button{background:#fffaf3;color:#e85d04;border-color:#fdd5b5;font-weight:500}
+.toolbar .btn-primary{background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff;border:none;font-weight:600}
+.table-wrap{overflow-x:auto;padding:0 2px}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:320px}
+thead{background:#fffaf3}
+th{padding:8px 4px;text-align:center;font-weight:600;color:#666;font-size:11px;border-bottom:1px solid #fef0e0;white-space:nowrap}
+td{padding:8px 4px;text-align:center;border-bottom:1px solid #fef5e7;font-size:13px}
+td.name{font-weight:600;color:#3d2b1f;max-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+td.seq{color:#999;font-size:11px;width:28px}
+td.qty{font-weight:500}
+td.loc{font-size:12px;color:#888}
+.exp-warn-yellow td{background:#fff3cd!important;color:#856404}
+.exp-warn-red td{background:#f8d7da!important;color:#721c24}
+.del-btn{background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:2px 6px}
+.del-btn:active{background:#fee;color:#dc2f02}
+.status-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px 2px;font-size:12px;color:#888}
+.status-dot{width:8px;height:8px;border-radius:50%;background:#bbb;transition:all .3s}
+.status-dot.listening{background:#dc2f02;animation:pulse .8s ease-in-out infinite}
+.status-dot.processing{background:#e85d04}
+@keyframes pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(220,47,2,.4)}50%{transform:scale(1.3);box-shadow:0 0 0 8px rgba(220,47,2,0)}}
+#voiceCard{background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.06);margin:12px;padding:14px 16px;display:none}
+#voiceCard.show{display:block;animation:slideUp .3s ease}
+@keyframes slideUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+#voiceCard .label{font-size:12px;color:#999;margin-bottom:4px}
+#voiceCard .text{font-size:14px;color:#333;margin-bottom:6px;word-break:break-all}
+#voiceCard .analysis{background:#fffaf3;border-radius:8px;padding:10px 12px;font-size:13px;line-height:1.6;border-left:3px solid #e85d04}
+#voiceCard .analysis .tag{display:inline-block;background:#e85d04;color:#fff;padding:2px 10px;border-radius:10px;font-size:11px;margin-right:4px}
+.log-card{background:#fff;border-radius:12px;box-shadow:0 1px 6px rgba(0,0,0,.06);margin:12px 12px 80px;padding:14px 16px}
+.log-list{max-height:150px;overflow-y:auto;font-size:12px;color:#666}
+.log-item{padding:4px 0;border-bottom:1px solid #fef5e7;display:flex;gap:6px;font-size:12px}
+.log-item .time{color:#ccc;font-size:10px;white-space:nowrap;min-width:44px}
+.log-item .op-tag{color:#e85d04;font-size:10px;white-space:nowrap}
+.fab{position:fixed;bottom:28px;right:20px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff;border:none;font-size:26px;box-shadow:0 4px 20px rgba(220,47,2,.35);cursor:pointer;z-index:99;display:flex;align-items:center;justify-content:center}
+.fab.listening{box-shadow:0 4px 30px rgba(220,47,2,.6);animation:micPulse 1s ease-in-out infinite}
+@keyframes micPulse{0%,100%{box-shadow:0 4px 20px rgba(220,47,2,.35)}50%{box-shadow:0 4px 40px rgba(220,47,2,.7);transform:scale(1.05)}}
+.fab-label{position:fixed;bottom:92px;right:20px;font-size:11px;color:#999;background:rgba(0,0,0,.06);padding:3px 10px;border-radius:10px;pointer-events:none}
+.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);background:#333;color:#fff;padding:10px 20px;border-radius:10px;font-size:14px;z-index:999;opacity:0;transition:all .3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.empty-msg{text-align:center;padding:20px 0;color:#ddd;font-size:13px}
+.sp-wrap{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 0}
+.spinner{width:20px;height:20px;border:3px solid #fef0e0;border-top-color:#e85d04;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#loginScreen{position:fixed;inset:0;z-index:9999;display:flex;flex-direction:column;align-items:center;justify-content:center;background:linear-gradient(135deg,#fef5e7,#fde8d0);padding:24px}
+#loginScreen .logo-area{text-align:center;margin-bottom:36px}
+#loginScreen .logo-area h1{font-size:32px;color:#e85d04;letter-spacing:2px}
+#loginScreen .logo-area .sub{font-size:14px;color:#b07d5e;margin-top:4px;letter-spacing:4px}
+#loginScreen .login-card{background:#fff;border-radius:16px;padding:28px 24px;width:100%;max-width:320px;box-shadow:0 4px 20px rgba(0,0,0,.08)}
+#loginScreen .form-group{margin-bottom:14px}
+#loginScreen .form-group input{width:100%;padding:10px 14px;border:1px solid #fef0e0;border-radius:10px;font-size:14px;outline:none;background:#fffaf3}
+#loginScreen .form-group input:focus{border-color:#e85d04}
+#loginScreen .login-btn{width:100%;padding:12px;border:none;border-radius:10px;background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff;font-size:16px;font-weight:600;cursor:pointer}
+#loginScreen .error-msg{color:#dc2f02;font-size:12px;text-align:center;margin-top:8px;min-height:18px}
+#modalOverlay{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.4);display:none;align-items:center;justify-content:center;padding:20px}
+#modalOverlay.show{display:flex}
+#modalOverlay .modal{background:#fff;border-radius:16px;padding:24px 20px;width:100%;max-width:340px;max-height:80vh;overflow-y:auto}
+#modalOverlay .modal h3{font-size:16px;margin-bottom:14px;color:#3d2b1f}
+#modalOverlay .modal .form-group{margin-bottom:12px}
+#modalOverlay .modal .form-group input,.modal .form-group select{width:100%;padding:9px 12px;border:1px solid #fef0e0;border-radius:8px;font-size:14px;outline:none;background:#fffaf3}
+#modalOverlay .modal .modal-btns{display:flex;gap:8px;margin-top:16px}
+#modalOverlay .modal .modal-btns button{flex:1;padding:10px;border-radius:8px;border:none;font-size:14px;font-weight:500;cursor:pointer}
+#modalOverlay .modal .modal-btns .btn-cancel{background:#f5f5f5;color:#666}
+#modalOverlay .modal .modal-btns .btn-confirm{background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff}
+.account-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #fef5e7}
+.account-item .info{display:flex;align-items:center;gap:8px}
+.account-item .avatar{width:32px;height:32px;border-radius:50%;background:#fef0e0;color:#e85d04;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600}
+.account-item .name{font-size:14px;font-weight:500}
+.account-item .role-tag{font-size:10px;background:#fef0e0;color:#e85d04;padding:1px 6px;border-radius:6px}
+.account-item .del-account-btn{background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:4px}
+#newLocConfirm{position:fixed;bottom:0;left:0;right:0;z-index:9997;background:#fff;border-radius:16px 16px 0 0;padding:20px;box-shadow:0 -4px 20px rgba(0,0,0,.15);display:none}
+#newLocConfirm.show{display:block}
+#newLocConfirm .btns{display:flex;gap:8px}
+#newLocConfirm .btns button{flex:1;padding:10px;border-radius:8px;border:none;font-size:14px;cursor:pointer}
+#newLocConfirm .btns .btn-no{background:#f5f5f5;color:#666}
+#newLocConfirm .btns .btn-yes{background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff}
+@keyframes fadeIn{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
+/* Input bar */
+.input-bar{position:fixed;bottom:18px;left:16px;right:100px;z-index:98;display:flex;gap:6px;background:#fff;border:2px solid #fdd5b5;border-radius:28px;padding:4px 4px 4px 16px;box-shadow:0 2px 12px rgba(220,47,2,.15);align-items:center}
+.input-bar input{flex:1;border:none;outline:none;font-size:14px;color:#3d2b1f;background:transparent;padding:8px 0;min-width:0}
+.input-bar input::placeholder{color:#ccc}
+.input-bar .send-btn{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff;border:none;font-size:18px;cursor:pointer;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.input-bar .send-btn:active{opacity:.8}
+.input-bar .send-btn::before{content:'\0021d1'}
+</style>
+</head>
+<body>
+<!-- Login Screen -->
+<div id="loginScreen">
+  <div class="logo-area">
+    <h1>李阿姨小饭桌</h1>
+    <div class="sub">健康营养美食</div>
+  </div>
+  <div class="login-card">
+    <h2>登录</h2>
+    <div class="form-group"><input type="text" id="loginUser" placeholder="输入账号" autocomplete="off"></div>
+    <div class="form-group"><input type="password" id="loginPass" placeholder="输入密码"></div>
+    <button class="login-btn" id="loginBtn">登 录</button>
+    <div class="error-msg" id="loginError"></div>
+  </div>
+</div>
+
+<div id="appMain" style="display:none">
+<div class="app-header">
+  <div class="top-row">
+    <div style="width:80px"></div>
+    <div><h1>李阿姨小饭桌</h1><div class="slogan">健康营养美食</div></div>
+    <div class="staff-badge" id="staffBadge" title="双击管理账号">
+      <span id="roleIcon"></span>
+      <span id="currentStaff" style="font-size:13px;font-weight:500">管理员</span>
+    </div>
+  </div>
+</div>
+<div class="status-bar">
+  <span class="status-dot idle" id="statusDot"></span>
+  <span id="statusText">就绪，点击 🎤 开始语音输入</span>
+</div>
+<div class="tab-bar">
+  <button class="tab active" data-tab="inv">🏪 仓库管理</button>
+  <button class="tab" data-tab="recipe">📖 菜谱管理</button>
+</div>
+<div class="section" id="tabInv">
+  <div class="section-title">🏪 仓库 <span class="badge" id="invCount">0 项</span></div>
+  <div class="toolbar">
+    <select id="locFilter"><option value="">📍 全部位置</option></select>
+    <button id="sortDurationBtn">⏱️ 按时长排序</button>
+    <button id="addInvBtn" class="btn-primary">+ 添加食材</button>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>序号</th><th>食材</th><th>数量</th><th>入库时长</th><th>位置</th><th></th></tr></thead><tbody id="invBody"></tbody></table></div>
+</div>
+<div class="section" id="tabRecipe" style="display:none">
+  <div class="section-title">📖 菜谱 <span class="badge" id="recipeCount">0 道</span></div>
+  <div class="toolbar">
+    <button id="addRecipeBtn" class="btn-primary">+ 新菜谱</button>
+  </div>
+  <div class="table-wrap"><table><thead><tr><th>菜名</th><th>食材</th><th></th></tr></thead><tbody id="recipeBody"></tbody></table></div>
+</div>
+<div id="voiceCard">
+  <div class="label">🎙️ 语音识别结果</div>
+  <div class="text" id="recogText"></div>
+  <div class="label" style="margin-top:6px">🤖 AI 分析结果</div>
+  <div class="analysis" id="analysisResult"></div>
+</div>
+<div class="log-card">
+  <div class="label">📋 操作记录 <span style="font-size:10px;color:#ccc;cursor:pointer" id="logClearBtn">清空</span></div>
+  <div class="log-list" id="logList"><div class="empty-msg">暂无操作记录</div></div>
+</div>
+<button class="fab" id="micBtn">🎤</button>
+<div class="fab-label" id="fabLabel">点击说话</div>
+<div class="toast" id="toast"></div>
+  <div class="input-bar" id="inputBar">
+    <input type="text" id="textInput" placeholder="打字输入，如：买了2斤胡萝卜" autocomplete="off">
+    <button class="send-btn" id="sendBtn"></button>
+  </div>
+</div>
+
+<div id="modalOverlay">
+  <div class="modal" id="modalContent"></div>
+</div>
+<div id="newLocConfirm">
+  <h4>📍 发现新位置</h4>
+  <p id="newLocText">是否添加该位置？</p>
+  <div class="btns"><button class="btn-no" id="newLocNo">不添加</button><button class="btn-yes" id="newLocYes">添加</button></div>
+</div>
+<script>
+// ========== DATA LAYER ==========
+var DB_KEY = 'liayi_pantry_data';
+var defaultAccounts = [
+  {username:'admin',password:'admin',role:'admin',name:'管理员'},
+  {username:'staff1',password:'111',role:'staff',name:'操作员1'},
+  {username:'staff2',password:'222',role:'staff',name:'操作员2'}
+];
+var defaultLocations = ['常温','1号冰箱','2号冰箱','3号冰箱','1号冰柜','2号冰柜','3号冰柜'];
+
+function loadData(){
+  try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes)return d}catch(e){}
+  var d={accounts:JSON.parse(JSON.stringify(defaultAccounts)),locations:JSON.parse(JSON.stringify(defaultLocations)),inventory:[],recipes:[],logs:[],nextInvId:1,nextRecipeId:1};
+  saveData(d);return d}
+function saveData(d){localStorage.setItem(DB_KEY,JSON.stringify(d))}
+function getDB(){return loadData()}
+
+var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null;
+var iB=document.getElementById('invBody'),rB=document.getElementById('recipeBody'),iC=document.getElementById('invCount'),rC=document.getElementById('recipeCount');
+var sD=document.getElementById('statusDot'),sT=document.getElementById('statusText'),vC=document.getElementById('voiceCard'),rT=document.getElementById('recogText'),aR=document.getElementById('analysisResult');
+var lL=document.getElementById('logList'),mB=document.getElementById('micBtn'),fL=document.getElementById('fabLabel'),tE=document.getElementById('toast'),tTimer=null;
+var mO=document.getElementById('modalOverlay'),mC=document.getElementById('modalContent'),nC=document.getElementById('newLocConfirm'),nT=document.getElementById('newLocText');
+
+function toast(m){tE.textContent=m;tE.classList.add('show');clearTimeout(tTimer);tTimer=setTimeout(function(){tE.classList.remove('show')},2500)}
+function setStatus(mo,t){sD.className='status-dot '+mo;sT.textContent=t}
+function addLog(msg,tp){
+  var e=lL.querySelector('.empty-msg');if(e)e.remove();
+  var d=document.createElement('div');d.className='log-item';
+  var n=new Date(),ti=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
+  var tag=tp?'<span class="op-tag">['+tp+']</span>':'';
+  d.innerHTML='<span class="time">'+ti+'</span>'+tag+'<span class="msg">'+msg+'</span>';
+  lL.prepend(d);if(lL.children.length>50)lL.lastChild.remove();
+  DB.logs.push({time:ti,msg:msg,op:tp||''});if(DB.logs.length>200)DB.logs.splice(0,DB.logs.length-200);saveData(DB)}
+function fmtDur(c){
+  var d=Date.now()-c,h=Math.floor(d/3600000),da=Math.floor(h/24);
+  if(h<1)return'刚刚';if(h<24)return h+'小时';return h+'小时 ('+da+'天)'}
+function expCls(l,c){
+  var h=(Date.now()-c)/3600000;
+  if(l.indexOf('常温')!==-1){if(h>48)return'exp-warn-red';if(h>24)return'exp-warn-yellow'}
+  else{var d=h/24;if(d>7)return'exp-warn-yellow'}
+  return''}
+function render(){
+  DB=getDB();
+  var items=DB.inventory.slice();
+  if(locFilter)items=items.filter(function(s){return s.loc===locFilter});
+  if(sortAsc)items.sort(function(a,b){return(b.createdAt||0)-(a.createdAt||0)});
+  iB.innerHTML='';
+  if(items.length===0){iB.innerHTML='<tr><td colspan="6" class="empty-msg">暂无食材</td></tr>'}else{
+    items.forEach(function(s,i){
+      var tr=document.createElement('tr');
+      var d=fmtDur(s.createdAt||Date.now()),ex=expCls(s.loc,s.createdAt||Date.now());
+      var wi=ex==='exp-warn-yellow'?'⚠️':(ex==='exp-warn-red'?'🚨':'');
+      if(ex)tr.className=ex;if(s._new)tr.classList.add('fade-in');
+      var cd=isAdmin;
+      tr.innerHTML='<td class="seq">'+(i+1)+'</td><td class="name">'+s.name+'</td><td class="qty">'+s.qty+'</td><td>'+wi+' '+d+'</td><td class="loc">'+s.loc+'</td>'+(cd?'<td><button class="del-btn" data-id="'+s.id+'" data-type="inv">✕</button></td>':'<td></td>');
+      iB.appendChild(tr)})}
+  iC.textContent=DB.inventory.length+' 项';
+  rB.innerHTML='';
+  if(DB.recipes.length===0){rB.innerHTML='<tr><td colspan="3" class="empty-msg">暂无菜谱</td></tr>'}else{
+    DB.recipes.forEach(function(r){
+      var tr=document.createElement('tr');if(r._new)tr.classList.add('fade-in');
+      var cd=isAdmin;
+      tr.innerHTML='<td class="name">'+r.name+'</td><td>'+r.ingredients+'</td>'+(cd?'<td><button class="del-btn" data-id="'+r.id+'" data-type="recipe">✕</button></td>':'<td></td>');
+      rB.appendChild(tr)})}
+  rC.textContent=DB.recipes.length+' 道';
+  var sel=document.getElementById('locFilter'),cv=sel.value;
+  sel.innerHTML='<option value="">📍 全部位置</option>';
+  DB.locations.forEach(function(l){var o=document.createElement('option');o.value=l;o.textContent=l;if(l===cv)o.selected=true;sel.appendChild(o)});
+  setTimeout(function(){DB.inventory.forEach(function(s){delete s._new});DB.recipes.forEach(function(r){delete r._new});saveData(DB)},600)}
+
+function showModal(html){mC.innerHTML=html;mO.classList.add('show')}
+function hideModal(){mO.classList.remove('show')}
+mO.addEventListener('click',function(e){if(e.target===mO)hideModal()})
+
+function showAddInv(n,q,l,id){
+  var isE=!!id,locs=DB.locations.map(function(x){return'<option value="'+x+'"'+(x===l?'selected':'')+'>'+x+'</option>'}).join('');
+  showModal('<h3>'+(isE?'编辑食材':'添加食材')+'</h3><div class="form-group"><label>食材名称</label><input id="mIn" value="'+(n||'')+'" placeholder="如：胡萝卜"></div><div class="form-group"><label>数量</label><input id="mIq" value="'+(q||'')+'" placeholder="如：2斤、5个"></div><div class="form-group"><label>位置</label><select id="mIl">'+locs+'</select></div><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="mIc">'+(isE?'保存':'添加')+'</button></div>');
+  document.getElementById('mIc').addEventListener('click',function(){
+    var nm=document.getElementById('mIn').value.trim(),qt=document.getElementById('mIq').value.trim(),lc=document.getElementById('mIl').value;
+    if(!nm||!qt){toast('⚠️ 请填写食材和数量');return}
+    DB=getDB();
+    if(isE){var f=DB.inventory.find(function(s){return s.id===id});if(f){f.name=nm;f.qty=qt;f.loc=lc}addLog('编辑 '+nm+' '+qt+'('+lc+')','编辑')}else{
+      if(DB.inventory.find(function(s){return s.name===nm&&s.loc===lc})){toast('⚠️ '+nm+' 已在'+lc+'中存在');return}
+      DB.inventory.push({id:DB.nextInvId++,name:nm,qty:qt,loc:lc,createdAt:Date.now(),_new:true});addLog('添加 '+nm+' '+qt+'('+lc+')','添加')}
+    saveData(DB);hideModal();render()})}
+
+function delInv(id){
+  DB=getDB();var idx=DB.inventory.findIndex(function(s){return s.id===id});
+  if(idx===-1)return;var nm=DB.inventory[idx].name;DB.inventory.splice(idx,1);saveData(DB);addLog('删除 '+nm,'删除');render();toast('🗑️ 已删除 '+nm)}
+
+function showAddRecipe(n,i,id){
+  var isE=!!id;
+  showModal('<h3>'+(isE?'编辑菜谱':'新菜谱')+'</h3><div class="form-group"><label>菜名</label><input id="mRn" value="'+(n||'')+'" placeholder="如：西红柿炒蛋"></div><div class="form-group"><label>食材（逗号分隔）</label><input id="mRi" value="'+(i||'')+'" placeholder="如：西红柿2个,鸡蛋3个"></div><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="mRc">'+(isE?'保存':'添加')+'</button></div>');
+  document.getElementById('mRc').addEventListener('click',function(){
+    var nm=document.getElementById('mRn').value.trim(),ig=document.getElementById('mRi').value.trim();
+    if(!nm){toast('⚠️ 请填写菜名');return}
+    DB=getDB();
+    if(isE){var f=DB.recipes.find(function(r){return r.id===id});if(f){f.name=nm;f.ingredients=ig||'（待补充）'}addLog('编辑 '+nm,'编辑')}else{
+      if(DB.recipes.find(function(r){return r.name===nm})){toast('⚠️ 菜谱 '+nm+' 已存在');return}
+      DB.recipes.push({id:DB.nextRecipeId++,name:nm,ingredients:ig||'（待补充）',_new:true});addLog('添加 '+nm,'添加')}
+    saveData(DB);hideModal();render()})}
+
+function delRecipe(id){
+  DB=getDB();var idx=DB.recipes.findIndex(function(r){return r.id===id});
+  if(idx===-1)return;var nm=DB.recipes[idx].name;DB.recipes.splice(idx,1);saveData(DB);addLog('删除 '+nm,'删除');render();toast('🗑️ 已删除 '+nm)}
+
+document.addEventListener('click',function(e){
+  var t=e.target;
+  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='inv'){var id=parseInt(t.getAttribute('data-id'));if(confirm('确定删除此食材？'))delInv(id)}
+  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='recipe'){var id=parseInt(t.getAttribute('data-id'));if(confirm('确定删除此菜谱？'))delRecipe(id)}})
+document.getElementById('locFilter').addEventListener('change',function(){locFilter=this.value;render()});
+document.getElementById('sortDurationBtn').addEventListener('click',function(){sortAsc=!sortAsc;this.textContent=sortAsc?'⏱️ 最新在前':'⏱️ 按时长排序';render()});
+document.getElementById('addInvBtn').addEventListener('click',function(){showAddInv()});
+document.getElementById('addRecipeBtn').addEventListener('click',function(){showAddRecipe()});
+document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});b.classList.add('active');var t=b.getAttribute('data-tab');document.getElementById('tabInv').style.display=t==='inv'?'':'none';document.getElementById('tabRecipe').style.display=t==='recipe'?'':'none'})});
+document.getElementById('logClearBtn').addEventListener('click',function(){DB=getDB();DB.logs=[];saveData(DB);lL.innerHTML='<div class="empty-msg">暂无操作记录</div>';toast('✅ 已清空')});
+
+// Login
+function login(u,p){
+  DB=getDB();var f=DB.accounts.find(function(a){return a.username===u&&a.password===p});
+  if(!f){document.getElementById('loginError').textContent='⚠️ 账号或密码错误';return}
+  currentUser=f;isAdmin=f.role==='admin';
+  document.getElementById('loginScreen').style.display='none';document.getElementById('appMain').style.display='block';
+  document.getElementById('roleIcon').textContent=isAdmin?'👑':'👤';
+  document.getElementById('currentStaff').textContent=f.name+(isAdmin?'(管理员)':'');
+  render();setStatus('idle','欢迎回来, '+f.name);addLog(f.name+' 登录了系统','登录')}
+document.getElementById('loginBtn').addEventListener('click',function(){var u=document.getElementById('loginUser').value.trim(),p=document.getElementById('loginPass').value.trim();login(u,p)});
+document.getElementById('loginPass').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('loginBtn').click()});
+
+// Account management (admin double-click badge)
+document.getElementById('staffBadge').addEventListener('dblclick',function(){
+  if(!isAdmin){toast('⛔ 仅管理员可管理账号');return}
+  DB=getDB();
+  var list=DB.accounts.map(function(a){var rl=a.role==='admin'?'管理员':'操作员',isSelf=currentUser&&a.username===currentUser.username;var db=(a.role!=='admin'&&!isSelf)?'<button class="del-account-btn" data-user="'+a.username+'">✕</button>':'';return'<div class="account-item"><div class="info"><div class="avatar">'+a.name.charAt(0)+'</div><div><div class="name">'+a.name+'</div><span class="role-tag">'+rl+'</span></div></div>'+db+'</div>'}).join('');
+  showModal('<h3>👥 账号管理</h3>'+list+'<div class="modal-btns" style="margin-top:12px"><button class="btn-cancel" onclick="hideModal()">关闭</button><button class="btn-confirm" id="showAddAccBtn">+ 添加操作员</button></div>');
+  document.getElementById('showAddAccBtn').addEventListener('click',function(){
+    showModal('<h3>添加操作员</h3><div class="form-group"><label>姓名</label><input id="nAN" placeholder="如：张三"></div><div class="form-group"><label>账号</label><input id="nAU" placeholder="英文+数字"></div><div class="form-group"><label>密码</label><input id="nAP" type="password"></div><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">返回</button><button class="btn-confirm" id="cAA">添加</button></div>');
+    document.getElementById('cAA').addEventListener('click',function(){var nm=document.getElementById('nAN').value.trim(),us=document.getElementById('nAU').value.trim(),pw=document.getElementById('nAP').value.trim();if(!nm||!us||!pw){toast('⚠️ 请完整填写');return}DB=getDB();if(DB.accounts.find(function(a){return a.username===us})){toast('⚠️ 账号已存在');return}DB.accounts.push({username:us,password:pw,role:'staff',name:nm});saveData(DB);addLog('添加 '+nm+'('+us+')','管理');toast('✅ 已添加');hideModal()})});
+  document.querySelectorAll('.del-account-btn').forEach(function(b){b.addEventListener('click',function(){var u=this.getAttribute('data-user');if(confirm('确定删除账号 '+u+' ？')){DB=getDB();DB.accounts=DB.accounts.filter(function(a){return a.username!==u});saveData(DB);addLog('删除账号 '+u,'管理');toast('🗑️ 已删除');hideModal()}})});
+});
+// DeepSeek AI
+var DSK='sk-6f997886ebeb426f9e9a4eb98767e626';
+function clean(r){return r.replace(/^[\s\u3000]+/g,'').replace(/[\s\u3000]+$/g,'').replace(/[\u3000\.,!?]+$/g,'')}
+
+async function aiAnalyze(raw){
+  var txt=clean(raw);if(!txt)return{action:'unknown',desc:'未检测到有效语音'};
+  var locs=DB.locations.join(','),items=DB.inventory.map(function(s){return s.name+'('+s.loc+')'}).join(',');
+  try{
+    var r=await fetch('https://api.deepseek.com/v1/chat/completions',{
+      method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+DSK},
+      body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:'你是李阿姨小饭桌的AI助手。返回纯JSON。可用位置：'+locs+'。现有食材：'+items+'。action类型：add_stock(进货) use_stock(消耗) set_stock(设置) delete_stock(删除) move_stock(转移) add_recipe(新菜谱) recipe_ingredients(设食材) query(查询) new_location(新位置) ask_qty(追问)。规则：数量带单位如2斤。如果位置不存在返回new_location。只说了食材没提数量返回ask_qty。如有多条用JSON数组。'},{role:'user',content:txt}]})});
+    if(!r.ok)throw new Error('API '+r.status);
+    var d=await r.json(),reply=d.choices[0].message.content.trim();
+    if(reply.indexOf('[')===0){var arr=JSON.parse(reply);return arr[0]}
+    if(reply.indexOf('`')!==-1)reply=reply.replace(/`(?:json)?\n?/g,'').trim();
+    var res=JSON.parse(reply);
+    if(!res.action)throw new Error('no action');
+    if(!res.desc){var dm={add_stock:'进货 '+(res.item||'')+' '+(res.qty||''),use_stock:'消耗 '+(res.item||'')+' '+(res.qty||''),set_stock:'设置 '+(res.item||'')+'='+(res.qty||''),delete_stock:'删除 '+(res.name||''),move_stock:'转移 '+(res.item||'')+' '+res.qty+' 到'+(res.to_loc||''),add_recipe:'新菜谱 '+(res.name||''),recipe_ingredients:'设置 '+(res.name||'')+' 食材',query:'查询 '+(res.name||''),new_location:'发现 '+(res.loc||''),ask_qty:'询问数量'};res.desc=dm[res.action]||res.action}
+    return res
+  }catch(e){return{action:'unknown',desc:'AI出错: '+e.message}}
+}
+
+function execAI(res){
+  if(res.action==='unknown'){toast(res.desc);addLog('❌ '+res.desc,'AI');return}
+  if(res.action==='ask_qty'){toast('❓ '+(res.prompt||'请告诉我数量'));addLog('❓ AI: '+(res.prompt||'请告诉我数量'),'AI');return}
+  if(res.action==='new_location'){pendingNewLoc=res.loc;nT.textContent='检测到新位置「'+res.loc+'」，是否添加？';nC.classList.add('show');addLog('📍 检测到新位置 '+res.loc,'AI');return}
+  DB=getDB();var a=res.action,desc=res.desc;
+  if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){return s.name===res.item&&s.loc===lc});if(dup){dup.qty=res.qty;dup.createdAt=Date.now();addLog('✅ 更新 '+res.item+' '+res.qty+'('+lc+')','AI')}else{DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 '+res.item+' '+res.qty+'('+lc+')','AI')}saveData(DB);render();toast('✅ '+desc);return}
+  if(a==='use_stock'||a==='set_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}f.qty=res.qty;f.createdAt=Date.now();saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
+  if(a==='delete_stock'){var idx=DB.inventory.findIndex(function(s){return s.name===res.name});if(idx===-1){toast('❌ 没有 '+res.name);addLog('❌ 未找到 '+res.name,'AI');return}DB.inventory.splice(idx,1);saveData(DB);render();toast('🗑️ '+desc);addLog('🗑️ '+desc,'AI');return}
+  if(a==='move_stock'){var src=DB.inventory.find(function(s){return s.name===res.item&&s.loc===res.from_loc});if(!src){toast('❌ 未找到');return}var dst=DB.inventory.find(function(s){return s.name===res.item&&s.loc===res.to_loc});if(!dst){DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:res.to_loc,createdAt:src.createdAt,_new:true})}saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
+  if(a==='add_recipe'){if(DB.recipes.find(function(r){return r.name===res.name})){toast('⚠️ 菜谱已存在');return}DB.recipes.push({id:DB.nextRecipeId++,name:res.name,ingredients:'（待补充）',_new:true});saveData(DB);render();toast('➕ '+desc);addLog('➕ '+desc,'AI');return}
+  if(a==='recipe_ingredients'){var f=DB.recipes.find(function(r){return r.name===res.name});if(f)f.ingredients=res.ingredients;else DB.recipes.push({id:DB.nextRecipeId++,name:res.name,ingredients:res.ingredients,_new:true});saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
+  if(a==='query'){var f=DB.inventory.find(function(s){return s.name===res.name});if(f){toast('🔍 '+res.name+': '+f.qty+' 在'+f.loc);addLog('🔍 '+res.name+': '+f.qty+' '+f.loc,'AI')}else{toast('🔍 没有 '+res.name);addLog('🔍 未找到 '+res.name,'AI')}render()}
+}
+// Voice Recognition
+function startListening(){
+  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){setStatus('idle','❌ 浏览器不支持语音');mB.style.display='none';return}
+  setStatus('idle','请求麦克风权限...');
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){
+    s.getTracks().forEach(function(t){t.stop()});
+    finalTranscript='';isListening=true;aR.innerHTML='';vC.classList.remove('show');
+    var r=new SR();r.lang='zh-CN';r.continuous=true;r.interimResults=true;r.maxAlternatives=1;
+    r.onstart=function(){setStatus('listening','🎤 聆听中... 再次点击停止');mB.classList.add('listening');mB.textContent='🔴';fL.textContent='点击停止';fL.classList.add('active')};
+    r.onresult=function(e){var im='';for(var i=e.resultIndex;i<e.results.length;i++){var t=e.results[i][0].transcript;if(e.results[i].isFinal)finalTranscript+=t;else im+=t}rT.textContent=finalTranscript+im;vC.classList.add('show')};
+    r.onerror=function(e){if(e.error==='not-allowed'){setStatus('idle','⚠️ 需允许麦克风');toast('⚠️ 需要麦克风权限')}stopListening(true)};
+    r.onend=function(){if(isListening){try{r.start()}catch(e){}}};recognition=r;r.start()})
+  .catch(function(){setStatus('idle','⚠️ 麦克风权限被拒绝');toast('⚠️ 请在浏览器中允许麦克风权限')})}
+
+async function stopListening(quiet){
+  isListening=false;if(recognition){try{recognition.stop()}catch(e){}recognition=null}
+  mB.classList.remove('listening');mB.textContent='🎤';fL.textContent='点击说话';fL.classList.remove('active');
+  if(!quiet&&finalTranscript.trim()){
+    aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI 分析中...</span></div>';
+    setStatus('processing','🤖 AI分析中...');
+    try{var r=await aiAnalyze(finalTranscript);var ie=r.action==='unknown';var si=ie?'<span style="color:#e74c3c">❌</span>':'<span style="color:#2d6a4f">✅</span>';
+      var h='<div style="display:flex;align-items:center">'+si+' <span>📝 '+r.desc+'</span></div>';
+      if(r.action==='add_stock'||r.action==='use_stock'||r.action==='set_stock')h+='<div style="margin-top:4px"><span class="tag">操作</span> <span class="key">'+r.item+'</span> → <span class="key">'+r.qty+'</span></div>';
+      else if(r.action==='delete_stock')h+='<div style="margin-top:4px"><span class="tag">操作</span> 删除 <span class="key">'+r.name+'</span></div>';
+      else if(r.action==='move_stock')h+='<div style="margin-top:4px"><span class="tag">操作</span> 转移 <span class="key">'+r.item+'</span> → <span class="key">'+r.to_loc+'</span></div>';
+      else if(r.action==='add_recipe')h+='<div style="margin-top:4px"><span class="tag">操作</span> 新菜谱 <span class="key">'+r.name+'</span></div>';
+      else if(r.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+r.loc+'</span></div>';
+      else if(r.action==='ask_qty')h+='<div style="margin-top:4px"><span class="tag">追问</span> '+r.prompt+'</div>';
+      aR.innerHTML=h;setStatus('done','✅ 已完成');execAI(r)}
+    catch(e){aR.innerHTML='<div><span style="color:#e74c3c">❌</span> <span>AI请求失败: '+e.message+'</span></div>';setStatus('idle','❌ 分析失败')}}
+  else if(!quiet){setStatus('idle','就绪，点击 🎤 开始语音输入')}}
+
+mB.addEventListener('click',function(){if(isListening)stopListening(false);else startListening()});
+
+// New Location Confirm
+document.getElementById('newLocYes').addEventListener('click',function(){
+  if(pendingNewLoc){DB=getDB();if(!DB.locations.includes(pendingNewLoc)){DB.locations.push(pendingNewLoc);saveData(DB);addLog('📍 添加新位置 '+pendingNewLoc,'管理')}toast('✅ 已添加位置 '+pendingNewLoc)}
+  nC.classList.remove('show');pendingNewLoc=null;render()});
+document.getElementById('newLocNo').addEventListener('click',function(){nC.classList.remove('show');pendingNewLoc=null});
+
+// Service Worker
+  // Text input handler
+  document.getElementById('sendBtn').addEventListener('click', function(){ submitTextInput(); });
+  document.getElementById('textInput').addEventListener('keydown', function(e){ if(e.key==='Enter') submitTextInput(); });
+  function submitTextInput(){
+    var txt=document.getElementById('textInput').value.trim();
+    if(!txt) return;
+    document.getElementById('textInput').value = '';
+    setStatus('processing','AI分析中...');
+    voiceCard.classList.add('show');
+    recogText.textContent = '打字: '+txt;
+    analysisResult.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI分析中...</span></div>';
+    aiAnalyze(txt).then(function(r){
+      var ie=r.action==='unknown';
+      var si=ie?'<span style=color:#e74c3c>X</span>':'<span style=color:#2d6a4f>V</span>';
+      var h='<div style=display:flex;align-items:center>'+si+' <span> '+r.desc+'</span></div>';
+      if(r.action==='add_stock'||r.action==='use_stock'||r.action==='set_stock')h+='<div style=margin-top:4px><span class=tag>操作</span> <span class=key>'+r.item+'</span> -> <span class=key>'+r.qty+'</span></div>';
+      else if(r.action==='delete_stock')h+='<div style=margin-top:4px><span class=tag>操作</span> 删除 <span class=key>'+r.name+'</span></div>';
+      else if(r.action==='move_stock')h+='<div style=margin-top:4px><span class=tag>操作</span> 转移 '+r.item+' -> '+r.to_loc+'</div>';
+      else if(r.action==='add_recipe')h+='<div style=margin-top:4px><span class=tag>操作</span> 新菜谱 <span class=key>'+r.name+'</span></div>';
+      else if(r.action==='new_location')h+='<div style=margin-top:4px><span class=tag>新位置</span> <span class=key>'+r.loc+'</span></div>';
+      else if(r.action==='ask_qty')h+='<div style=margin-top:4px><span class=tag>追问</span> '+r.prompt+'</div>';
+      analysisResult.innerHTML=h; setStatus('done','已完成'); execAI(r);
+    }).catch(function(e){
+      analysisResult.innerHTML='<div><span style=color:#e74c3c>X</span> <span>AI请求失败: '+e.message+'</span></div>';
+      setStatus('idle','分析失败');
+    });
+  }
+
+if('serviceWorker'in navigator){navigator.serviceWorker.register('sw.js').then(function(){console.log('SW ok')}).catch(function(e){console.log('SW err',e)})}
+
+// Init
+render();
+setStatus('idle','就绪，点击 🎤 开始语音输入');
+
+/// ========== FIREBASE INTEGRATION (OPTIONAL) ==========
+/// To enable cloud sync across devices:
+/// 1. Go to https://console.firebase.google.com and create a project
+/// 2. Enable Authentication (Email/Password) and Firestore Database
+/// 3. Replace the config below with your Firebase project config
+/// 4. Uncomment the Firebase init and sync code below
+/// 5. Deploy to any static hosting (GitHub Pages, Vercel, Netlify, etc.)
+
+/*
+// Uncomment the next 2 lines in index.html <head> to load Firebase SDK
+// <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+// <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+var firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT.firebaseapp.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+// Enable offline persistence
+db.enablePersistence().catch(function(err){ console.log("Firebase persistence error:", err); });
+
+// Sync data to Firestore on every save
+var originalSaveData = saveData;
+saveData = function(d) {
+  originalSaveData(d);
+  var uid = currentUser ? currentUser.username : 'anonymous';
+  db.collection("pantry_data").doc(uid).set({
+    data: JSON.parse(JSON.stringify(d)),
+    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(function(e){ console.log("Firebase sync error:", e); });
+};
+
+// Load data from Firestore on login
+var originalLogin = login;
+login = function(u, p) {
+  originalLogin(u, p);
+  if (currentUser) {
+    db.collection("pantry_data").doc(currentUser.username).get().then(function(doc) {
+      if (doc.exists) {
+        var remoteData = doc.data().data;
+        // Merge: use most recent version
+        if (remoteData && remoteData.inventory) {
+          localStorage.setItem(DB_KEY, JSON.stringify(remoteData));
+          DB = getDB();
+          render();
+          addLog("📡 已同步云端数据", "同步");
+        }
+      }
+    }).catch(function(e){ console.log("Firebase load error:", e); });
+  }
+};
+*/
+
+</script>
+</body>
+</html>
