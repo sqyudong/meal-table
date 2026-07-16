@@ -1,0 +1,14 @@
+﻿{
+  "accounts": [
+    {"username":"admin","password":"admin","role":"admin","name":"管理员"},
+    {"username":"liqing","password":"liqing","role":"staff","name":"员工"},
+    {"username":"shenwen","password":"shenwen","role":"staff","name":"员工"},
+    {"username":"yanbo","password":"yanbo","role":"staff","name":"员工"}
+  ],
+  "locations": ["常温","1号冰箱","2号冰箱","3号冰箱","1号冰柜","2号冰柜","3号冰柜"],
+  "inventory": [],
+  "recipes": [],
+  "logs": [],
+  "nextInvId": 1,
+  "nextRecipeId": 1
+}

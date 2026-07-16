@@ -207,14 +207,20 @@ var defaultAccounts = [
   {username:'yanbo',password:'yanbo',role:'staff',name:'员工'}
 ];
 var defaultLocations = ['常温','1号冰箱','2号冰箱','3号冰箱','1号冰柜','2号冰柜','3号冰柜'];
+var GITHUB_TOKEN = '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';
+var GITHUB_REPO = 'sqyudong/meal-table';
+var GITHUB_FILE = 'data.json';
+var DATA_SHA = null;
 // Auto-fetch accounts from server xlsx template
 fetch('accounts_template.xlsx').then(function(r){if(!r.ok)throw new Error();return r.arrayBuffer()}).then(function(buf){try{var wb=XLSX.read(new Uint8Array(buf),{type:'array'});var json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);if(json&&json.length>0){var d=getDB();var newAcc=json.map(function(rw){var u=(rw.username||rw.账号||'').toString().trim();var p=(rw.password||rw.密码||'').toString().trim();var n=(rw.name||rw.姓名||u).toString().trim();var rl=(rw.role||rw.角色||'staff').toString().trim();return u?{username:u,password:p,role:rl==='admin'?'admin':'staff',name:n}:null}).filter(function(a){return a});if(newAcc.length>0){d.accounts=newAcc;saveData(d)}}}catch(e){}}).catch(function(){console.log('xlsx fetch fail')})
 
+function fetchCloudData(){return fetch('https://api.github.com/repos/'+GITHUB_REPO+'/contents/'+GITHUB_FILE,{headers:{'Authorization':'Bearer '+GITHUB_TOKEN}}).then(function(r){if(!r.ok)throw new Error();return r.json()}).then(function(d){DATA_SHA=d.sha;var c=decodeURIComponent(escape(atob(d.content)));return JSON.parse(c)});}
+function pushCloudData(d){var c=btoa(unescape(encodeURIComponent(JSON.stringify(d))));return fetch('https://api.github.com/repos/'+GITHUB_REPO+'/contents/'+GITHUB_FILE,{method:'PUT',headers:{'Authorization':'Bearer '+GITHUB_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({message:'sync data',content:c,sha:DATA_SHA})}).then(function(r){return r.json()}).then(function(r){if(r.content)DATA_SHA=r.content.sha});}
 function loadData(){
   try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes){var da=JSON.parse(JSON.stringify(defaultAccounts));da.forEach(function(a){var ex=d.accounts.find(function(x){return x.username===a.username});if(ex){ex.name=a.name;ex.password=a.password;ex.role=a.role}else{d.accounts.push(a)}});saveData(d);return d}}catch(e){}
   var d={accounts:JSON.parse(JSON.stringify(defaultAccounts)),locations:JSON.parse(JSON.stringify(defaultLocations)),inventory:[],recipes:[],logs:[],nextInvId:1,nextRecipeId:1};
   saveData(d);return d}
-function saveData(d){localStorage.setItem(DB_KEY,JSON.stringify(d))}
+function saveData(d){localStorage.setItem(DB_KEY,JSON.stringify(d));pushCloudData(d).catch(function(){})}
 function getDB(){return loadData()}
 
 var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false;
@@ -520,6 +526,7 @@ renderLogs();
 render();
 setStatus('idle','就绪，点击 🎤 开始语音输入');
 }
+fetchCloudData().then(function(cd){localStorage.setItem(DB_KEY,JSON.stringify(cd));if(currentUser){renderLogs();render()}}).catch(function(){})
 
 /// ========== FIREBASE INTEGRATION (OPTIONAL) ==========
 /// To enable cloud sync across devices:
