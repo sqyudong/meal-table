@@ -198,7 +198,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.1';
+var APP_VERSION = 'V1.0.2';
 var INV_VERSION_KEY = 'inv_ver';
 // Data sourced from data.json (GitHub)
 function setSync(s){var e=document.getElementById("syncStatus");if(e)e.textContent=s}
@@ -215,7 +215,7 @@ function loadData(){
   try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes){return d}}catch(e){}
   try{var x=new XMLHttpRequest();x.open('GET','https://raw.githubusercontent.com/sqyudong/meal-table/main/data.json',false);x.overrideMimeType('text/plain; charset=x-user-defined');x.send();if(x.status===200){var cd=JSON.parse(x.responseText);if(cd&&cd.inventory&&cd.accounts){saveData(cd);return cd}}}catch(e){}var d={accounts:[{username:'admin',password:'admin',role:'admin',name:'管理员'}],locations:['常温','1号冰箱','2号冰箱','3号冰箱','1号冰柜','2号冰柜','3号冰柜'],inventory:[],recipes:[],logs:[],nextInvId:1,nextRecipeId:1};
   saveData(d);return d}
-function saveData(d){localStorage.setItem(DB_KEY,JSON.stringify(d));setSync("☁");pushCloudData(d).then(function(){setSync("✔")}).catch(function(){setSync("✖")})}
+var _lastInvJSON='';function saveData(d){var ij=JSON.stringify(d.inventory);if(ij!==_lastInvJSON&&_lastInvJSON!==''){var iv=parseInt(localStorage.getItem(INV_VERSION_KEY)||'0')+1;localStorage.setItem(INV_VERSION_KEY,iv)}_lastInvJSON=ij;localStorage.setItem(DB_KEY,JSON.stringify(d));setSync("☁");pushCloudData(d).then(function(){setSync("✔")}).catch(function(){setSync("✖")})}
 function getDB(){return loadData()}
 
 var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false;
