@@ -136,7 +136,7 @@ td.loc{font-size:12px;color:#888}
 <div id="appMain" style="display:none">
 <div class="app-header">
   <div class="top-row">
-    <span id="versionDisplay" style="font-size:11px;color:rgba(255,255,255,0.7);white-space:nowrap">V1.0.1</span>
+    <span id="versionDisplay" style="font-size:11px;color:rgba(255,255,255,0.7);white-space:nowrap">V1.0.1</span> <span id="syncStatus" style="font-size:10px;color:rgba(255,255,221,0.8);margin-left:4px">☁</span>
     <div><h1>李阿姨小饭桌</h1><div class="slogan">健康营养美食</div></div>
     <div class="staff-badge" id="staffBadge" title="双击管理账号">
       <span id="roleIcon"></span>
@@ -207,6 +207,7 @@ var defaultAccounts = [
   {username:'yanbo',password:'yanbo',role:'staff',name:'闫博'}
 ];
 var defaultLocations = ['常温','1号冰箱','2号冰箱','3号冰箱','1号冰柜','2号冰柜','3号冰柜'];
+function setSync(s){var e=document.getElementById("syncStatus");if(e)e.textContent=s}
 var GITHUB_TOKEN = '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';
 var GITHUB_REPO = 'sqyudong/meal-table';
 var GITHUB_FILE = 'data.json';
@@ -220,7 +221,7 @@ function loadData(){
   try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes){var da=JSON.parse(JSON.stringify(defaultAccounts));da.forEach(function(a){var ex=d.accounts.find(function(x){return x.username===a.username});if(ex){ex.name=a.name;ex.password=a.password;ex.role=a.role}else{d.accounts.push(a)}});saveData(d);return d}}catch(e){}
   var d={accounts:JSON.parse(JSON.stringify(defaultAccounts)),locations:JSON.parse(JSON.stringify(defaultLocations)),inventory:[],recipes:[],logs:[],nextInvId:1,nextRecipeId:1};
   saveData(d);return d}
-function saveData(d){localStorage.setItem(DB_KEY,JSON.stringify(d));pushCloudData(d).catch(function(){})}
+function saveData(d){localStorage.setItem(DB_KEY,JSON.stringify(d));setSync("☁");pushCloudData(d).then(function(){setSync("✔")}).catch(function(){setSync("✖")})}
 function getDB(){return loadData()}
 
 var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false;
@@ -526,7 +527,7 @@ renderLogs();
 render();
 setStatus('idle','就绪，点击 🎤 开始语音输入');
 }
-fetchCloudData().then(function(cd){localStorage.setItem(DB_KEY,JSON.stringify(cd));if(currentUser){renderLogs();render()}}).catch(function(){})
+fetchCloudData().then(function(cd){localStorage.setItem(DB_KEY,JSON.stringify(cd));if(currentUser){renderLogs();render()}}).catch(function(){setSync("✖")})
 
 /// ========== FIREBASE INTEGRATION (OPTIONAL) ==========
 /// To enable cloud sync across devices:
