@@ -140,7 +140,7 @@ td.loc{font-size:12px;color:#888}
     <div><h1>李阿姨小饭桌</h1><div class="slogan">健康营养美食</div></div>
     <div class="staff-badge" id="staffBadge" title="双击管理账号">
       <span id="roleIcon"></span>
-      <span id="currentStaff" style="font-size:13px;font-weight:500">管理员</span>
+      <span id="currentStaff" style="font-size:13px;font-weight:500">管理员</span><span id="logoutBtn" style="font-size:13px;cursor:pointer;margin-left:6px;opacity:.6" title="退出登录">🚪</span>
     </div>
   </div>
 </div>
@@ -322,9 +322,10 @@ function login(u,p){
   document.getElementById('loginScreen').style.display='none';document.getElementById('appMain').style.display='block';
   document.getElementById('roleIcon').textContent=isAdmin?'👑':'👤';
   document.getElementById('currentStaff').textContent=f.name+(isAdmin?'(管理员)':'');
-  render();setStatus('idle','欢迎回来, '+f.name);addLog(f.name+' 登录了系统','登录')}
+  if(document.getElementById('remUser').checked){localStorage.setItem('rem_user',u)}else{localStorage.removeItem('rem_user')}if(document.getElementById('remPass').checked){localStorage.setItem('rem_pass',p)}else{localStorage.removeItem('rem_pass')}localStorage.setItem('auto_login_time',Date.now());localStorage.setItem('auto_login_user',u);localStorage.setItem('auto_login_pass',p);render();setStatus('idle','欢迎回来, '+f.name);addLog(f.name+' 登录了系统','登录')}
 document.getElementById('loginBtn').addEventListener('click',function(){var u=document.getElementById('loginUser').value.trim(),p=document.getElementById('loginPass').value.trim();login(u,p)});
 document.getElementById('loginPass').addEventListener('keydown',function(e){if(e.key==='Enter')document.getElementById('loginBtn').click()});
+document.getElementById('logoutBtn').addEventListener('click',function(){localStorage.removeItem('auto_login_time');localStorage.removeItem('auto_login_user');localStorage.removeItem('auto_login_pass');currentUser=null;isAdmin=false;document.getElementById('appMain').style.display='none';document.getElementById('loginScreen').style.display='flex';document.getElementById('loginError').textContent='';document.getElementById('loginPass').value='';toast('✅ 已退出登录')})
 
 // Account management (admin double-click badge)
 document.getElementById('staffBadge').addEventListener('dblclick',function(){
@@ -508,10 +509,13 @@ addLog = function(msg,tp){
   originalAddLog(msg,tp);
   renderLogs();
 };
+// Auto-login: 10 minutes
+var autoTime=localStorage.getItem('auto_login_time');var autoUser=localStorage.getItem('auto_login_user');var autoPass=localStorage.getItem('auto_login_pass');if(autoTime&&autoUser&&autoPass&&(Date.now()-parseInt(autoTime)<600000)){login(autoUser,autoPass)}else{
 // Init
 renderLogs();
 render();
 setStatus('idle','就绪，点击 🎤 开始语音输入');
+}
 
 /// ========== FIREBASE INTEGRATION (OPTIONAL) ==========
 /// To enable cloud sync across devices:
