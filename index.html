@@ -205,6 +205,8 @@ var defaultAccounts = [
   {username:'yanbo',password:'yanbo',role:'staff',name:'艳波'}
 ];
 var defaultLocations = ['常温','1号冰箱','2号冰箱','3号冰箱','1号冰柜','2号冰柜','3号冰柜'];
+// Auto-fetch accounts from server xlsx template
+fetch('accounts_template.xlsx').then(function(r){if(!r.ok)throw new Error();return r.arrayBuffer()}).then(function(buf){try{var wb=XLSX.read(new Uint8Array(buf),{type:'array'});var json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);if(json&&json.length>0){var d=getDB();var newAcc=json.map(function(rw){var u=(rw.username||rw.账号||'').toString().trim();var p=(rw.password||rw.密码||'').toString().trim();var n=(rw.name||rw.姓名||u).toString().trim();var rl=(rw.role||rw.角色||'staff').toString().trim();return u?{username:u,password:p,role:rl==='admin'?'admin':'staff',name:n}:null}).filter(function(a){return a});if(newAcc.length>0){d.accounts=newAcc;saveData(d)}}}catch(e){}}).catch(function(){console.log('xlsx fetch fail')})
 
 function loadData(){
   try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes){var da=JSON.parse(JSON.stringify(defaultAccounts));da.forEach(function(a){if(!d.accounts.find(function(x){return x.username===a.username})){d.accounts.push(a)}});saveData(d);return d}}catch(e){}
