@@ -283,10 +283,10 @@ function showAddInv(n,q,l,id){
   document.getElementById('mIc').addEventListener('click',function(){
     var nm=document.getElementById('mIn').value.trim(),qt=document.getElementById('mIq').value.trim(),lc=document.getElementById('mIl').value;
     if(!nm||!qt){toast('⚠️ 请填写食材和数量');return}
-    DB=getDB();
-    if(isE){var f=DB.inventory.find(function(s){return s.id===id});if(f){f.name=nm;f.qty=qt;f.loc=lc}addLog('编辑 '+nm+' '+qt+'('+lc+')','编辑')}else{
-      var existing=DB.inventory.filter(function(s){return s.loc===lc&&(s.name===nm||(s.name.length>nm.length&&s.name.indexOf(nm)===0&&/^\d+$/.test(s.name.substring(nm.length))))});if(existing.length>0){var base=nm;var maxIdx=1;existing.forEach(function(s){var sfx=s.name.substring(base.length);if(sfx){var n=parseInt(sfx,10);if(n>maxIdx)maxIdx=n}});nm=base+(maxIdx+1)};return}
-      DB.inventory.push({id:DB.nextInvId++,name:nm,qty:qt,loc:lc,createdAt:Date.now(),_new:true});addLog('添加 '+nm+' '+qt+'('+lc+')','添加')}
+   DB=getDB();
+   if(isE){var f=DB.inventory.find(function(s){return s.id===id});if(f){f.name=nm;f.qty=qt;f.loc=lc}addLog('编辑 '+nm+' '+qt+'('+lc+')','编辑')}else{
+      var existing=DB.inventory.filter(function(s){return s.loc===lc&&(s.name===nm||(s.name.length>nm.length&&s.name.indexOf(nm)===0&&/^\d+$/.test(s.name.substring(nm.length))))});if(existing.length>0){var base=nm;var maxIdx=1;existing.forEach(function(s){var sfx=s.name.substring(base.length);if(sfx){var n=parseInt(sfx,10);if(n>maxIdx)maxIdx=n}});nm=base+(maxIdx+1)}}
+    DB.inventory.push({id:DB.nextInvId++,name:nm,qty:qt,loc:lc,createdAt:Date.now(),_new:true});addLog('添加 '+nm+' '+qt+'('+lc+')','添加')
     saveData(DB);hideModal();render()})}
 
 function delInv(id){
@@ -438,7 +438,7 @@ if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){r
 if(a==='move_stock'){var src=DB.inventory.find(function(s){return s.name===res.item&&s.loc===res.from_loc});if(!src){toast('❌ 未找到');return}var moveQty=res.qty;var sq=src.qty.match(/^(\d+(?:\.\d+)?)(.*)/);var mq=moveQty.match(/^(\d+(?:\.\d+)?)(.*)/);if(sq&&mq&&sq[2]===mq[2]){var n=parseFloat(sq[1])-parseFloat(mq[1]);if(n<=0){DB.inventory=DB.inventory.filter(function(s){return s!==src})}else{src.qty=n+sq[2]}}var newItemName=nextItemName(res.item);DB.inventory.push({id:DB.nextInvId++,name:newItemName,qty:moveQty,loc:res.to_loc,createdAt:Date.now(),_new:true});saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
   if(a==='add_recipe'){if(DB.recipes.find(function(r){return r.name===res.name})){toast('⚠️ 菜谱已存在');return}DB.recipes.push({id:DB.nextRecipeId++,name:res.name,ingredients:'（待补充）',_new:true});saveData(DB);render();toast('➕ '+desc);addLog('➕ '+desc,'AI');return}
   if(a==='recipe_ingredients'){var f=DB.recipes.find(function(r){return r.name===res.name});if(f)f.ingredients=res.ingredients;else DB.recipes.push({id:DB.nextRecipeId++,name:res.name,ingredients:res.ingredients,_new:true});saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
-  if(a==='query'){var matches=DB.inventory.filter(function(s){return s.name.indexOf(res.name)!==-1});if(matches.length>0){var brief=matches.map(function(s){return s.name+' '+s.qty+'('+s.loc+')'}).join(', ');toast('🔍 '+matches.length+' 项');addLog('🔍 '+res.name+' '+matches.length+' 项: '+brief+','AI')}else{toast('🔍 '+res.name);addLog('🔍 '+res.name+','AI')}return}
+  if(a==='query'){var matches=DB.inventory.filter(function(s){return s.name.indexOf(res.name)!==-1});if(matches.length>0){var brief=matches.map(function(s){return s.name+' '+s.qty+'('+s.loc+')'}).join(', ');toast('🔍 '+matches.length+' 项');addLog('🔍 '+res.name+' '+matches.length+' 项: '+brief, 'AI')}else{toast('🔍 '+res.name);addLog('🔍 '+res.name, 'AI')}return}
 }
 // Voice Recognition
 function startListening(){
