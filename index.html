@@ -212,7 +212,7 @@ fetch('accounts_template.xlsx').then(function(r){if(!r.ok)throw new Error();retu
 function fetchCloudData(){return fetch('https://api.github.com/repos/'+GITHUB_REPO+'/contents/'+GITHUB_FILE,{headers:{'Authorization':'Bearer '+GITHUB_TOKEN}}).then(function(r){if(!r.ok)throw new Error();return r.json()}).then(function(d){DATA_SHA=d.sha;var c=decodeURIComponent(escape(atob(d.content)));return JSON.parse(c)});}
 function pushCloudData(d){var c=btoa(unescape(encodeURIComponent(JSON.stringify(d))));return fetch('https://api.github.com/repos/'+GITHUB_REPO+'/contents/'+GITHUB_FILE,{method:'PUT',headers:{'Authorization':'Bearer '+GITHUB_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({message:'sync data',content:c,sha:DATA_SHA})}).then(function(r){return r.json()}).then(function(r){if(r.content)DATA_SHA=r.content.sha});}
 function loadData(){
-try{var x=new XMLHttpRequest();x.open('GET','https://raw.githubusercontent.com/sqyudong/meal-table/main/data.json',false);x.overrideMimeType('text/plain; charset=x-user-defined');x.send();if(x.status===200){var cd=JSON.parse(x.responseText);if(cd&&cd.inventory&&cd.accounts){saveData(cd);return cd}}}catch(e){}
+try{var x=new XMLHttpRequest();x.open('GET','https://raw.githubusercontent.com/sqyudong/meal-table/main/data.json',false);x.send();if(x.status===200){var cd=JSON.parse(x.responseText);if(cd&&cd.inventory&&cd.accounts){saveData(cd);return cd}}}catch(e){}
   try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes){return d}}catch(e){}setTimeout(function(){alert('\u26a0\ufe0f \u65e0\u6cd5\u52a0\u8f7d\u6570\u636e\uff1a\u4e91\u7aef\u548c\u672c\u5730\u90fd\u6ca1\u6709\u6570\u636e')},500);var d={accounts:[{username:'admin',password:'admin',role:'admin',name:'管理员'}],locations:['常温','1号冰箱','2号冰箱','3号冰箱','1号冰柜','2号冰柜','3号冰柜'],inventory:[],recipes:[],logs:[],nextInvId:1,nextRecipeId:1};
   saveData(d);return d}
 var _lastInvJSON='';function saveData(d){var ij=JSON.stringify(d.inventory);if(ij!==_lastInvJSON&&_lastInvJSON!==''){var iv=parseInt(localStorage.getItem(INV_VERSION_KEY)||'0')+1;localStorage.setItem(INV_VERSION_KEY,iv)}_lastInvJSON=ij;localStorage.setItem(DB_KEY,JSON.stringify(d));setSync("☁");pushCloudData(d).then(function(){setSync("✔")}).catch(function(){setSync("✖")})}
@@ -270,7 +270,7 @@ function render(){
   var sel=document.getElementById('locFilter'),cv=sel.value;
   sel.innerHTML='<option value="">📍 全部位置</option>';
   DB.locations.forEach(function(l){var o=document.createElement('option');o.value=l;o.textContent=l;if(l===cv)o.selected=true;sel.appendChild(o)});
-  setTimeout(function(){DB.inventory.forEach(function(s){delete s._new});DB.recipes.forEach(function(r){delete r._new});saveData(DB)},600);var _iv=parseInt(localStorage.getItem(INV_VERSION_KEY)||'0');document.getElementById('invVersionBadge').textContent='N'+_iv;document.getElementById('versionDisplay').textContent=APP_VERSION}
+  setTimeout(function(){DB.inventory.forEach(function(s){delete s._new});DB.recipes.forEach(function(r){delete r._new})},600);var _iv=parseInt(localStorage.getItem(INV_VERSION_KEY)||'0');document.getElementById('invVersionBadge').textContent='N'+_iv;document.getElementById('versionDisplay').textContent=APP_VERSION}
 
 function showModal(html){mC.innerHTML=html;mO.classList.add('show')}
 function hideModal(){mO.classList.remove('show')}
@@ -310,7 +310,7 @@ function delRecipe(id){
 
 document.addEventListener('click',function(e){
   var t=e.target;
-  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='inv'){var id=parseInt(t.getAttribute('data-id'));showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">确定要删除此食材吗？</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="confirmDelBtn">确认删除</button></div>');document.getElementById('confirmDelBtn').addEventListener('click',function(){hideModal();delInv(id)})}
+  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='inv'){var id=parseInt(t.getAttribute('data-id'));var tr=t.closest('tr');var nm=tr?tr.querySelector('.name').textContent:'';var qt=tr?tr.querySelector('.qty').textContent:'';showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">"'+nm+'"('+qt+')</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="confirmDelBtn">确认删除</button></div>');document.getElementById('confirmDelBtn').addEventListener('click',function(){hideModal();delInv(id)})}
   if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='recipe'){var id=parseInt(t.getAttribute('data-id'));showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">确定要删除此菜谱吗？</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="confirmDelBtn">确认删除</button></div>');document.getElementById('confirmDelBtn').addEventListener('click',function(){hideModal();delRecipe(id)})}})
 document.getElementById('locFilter').addEventListener('change',function(){locFilter=this.value;render()});
 document.getElementById('sortDurationBtn').addEventListener('click',function(){sortAsc=!sortAsc;this.textContent=sortAsc?'⏱️ 最新在前':'⏱️ 按时长排序';render()});
