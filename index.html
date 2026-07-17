@@ -198,7 +198,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.5';
+var APP_VERSION = 'V1.0.6';
 var INV_VERSION_KEY = 'inv_ver';
 // Data sourced from data.json (GitHub)
 function setSync(s){var e=document.getElementById("syncStatus");if(e)e.textContent=s}
@@ -438,7 +438,7 @@ async function stopListening(quiet){
   if(!quiet&&finalTranscript.trim()){
     aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI 分析中...</span></div>';
     setStatus('processing','🤖 AI分析中...');
-    try{var r=await aiAnalyze(finalTranscript);var results=Array.isArray(r)?r:[r];var lastResult=r;var ie=lastResult.action==='unknown';var si=ie?'<span style="color:#e74c3c">❌</span>':'<span style="color:#2d6a4f">✅</span>';
+try{var r=await aiAnalyze(finalTranscript);var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';var si=ie?'<span style="color:#e74c3c">❌</span>':'<span style="color:#2d6a4f">✅</span>';
       var h='<div style="display:flex;align-items:center">'+si+' <span>📝 '+r.desc+'</span></div>';
       if(r.action==='add_stock'||r.action==='use_stock'||r.action==='set_stock')h+='<div style="margin-top:4px"><span class="tag">操作</span> <span class="key">'+r.item+'</span> → <span class="key">'+r.qty+'</span></div>';
       else if(r.action==='delete_stock')h+='<div style="margin-top:4px"><span class="tag">操作</span> 删除 <span class="key">'+r.name+'</span></div>';
@@ -471,7 +471,7 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
     rT.textContent = '打字: '+txt;
     aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI分析中...</span></div>';
     aiAnalyze(txt).then(function(r){
-      var results=Array.isArray(r)?r:[r];var lastResult=r;var ie=lastResult.action==='unknown';
+      var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';
       var si=ie?'<span style=color:#e74c3c>X</span>':'<span style=color:#2d6a4f>V</span>';
       var h='<div style=display:flex;align-items:center>'+si+' <span> '+r.desc+'</span></div>';
       if(r.action==='add_stock'||r.action==='use_stock'||r.action==='set_stock')h+='<div style=margin-top:4px><span class=tag>操作</span> <span class=key>'+r.item+'</span> -> <span class=key>'+r.qty+'</span></div>';
