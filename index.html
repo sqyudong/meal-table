@@ -217,7 +217,7 @@ function loadData(){
 var _lastInvJSON='';function saveData(d){var ij=JSON.stringify(d.inventory);if(ij!==_lastInvJSON&&_lastInvJSON!==''){var iv=parseInt(localStorage.getItem(INV_VERSION_KEY)||'0')+1;localStorage.setItem(INV_VERSION_KEY,iv)}_lastInvJSON=ij;localStorage.setItem(DB_KEY,JSON.stringify(d));setSync("☁");pushCloudData(d).then(function(){setSync("✔")}).catch(function(){setSync("✖")})}
 function getDB(){return loadData()}
 
-var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false;
+var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false,pendingContext=null;
 var iB=document.getElementById('invBody'),rB=document.getElementById('recipeBody'),iC=document.getElementById('invCount'),rC=document.getElementById('recipeCount');
 var sD=document.getElementById('statusDot'),sT=document.getElementById('statusText'),vC=document.getElementById('voiceCard'),rT=document.getElementById('recogText'),aR=document.getElementById('analysisResult');
 var lL=document.getElementById('logList'),mB=document.getElementById('micBtn'),fL=document.getElementById('fabLabel'),tE=document.getElementById('toast'),tTimer=null;
@@ -283,7 +283,7 @@ function showAddInv(n,q,l,id){
     if(!nm||!qt){toast('⚠️ 请填写食材和数量');return}
     DB=getDB();
     if(isE){var f=DB.inventory.find(function(s){return s.id===id});if(f){f.name=nm;f.qty=qt;f.loc=lc}addLog('编辑 '+nm+' '+qt+'('+lc+')','编辑')}else{
-      if(DB.inventory.find(function(s){return s.name===nm&&s.loc===lc})){toast('⚠️ '+nm+' 已在'+lc+'中存在');return}
+      var existing=DB.inventory.filter(function(s){return s.loc===lc&&(s.name===nm||(s.name.length>nm.length&&s.name.indexOf(nm)===0&&/^\d+$/.test(s.name.substring(nm.length))))});if(existing.length>0){var base=nm;var maxIdx=1;existing.forEach(function(s){var sfx=s.name.substring(base.length);if(sfx){var n=parseInt(sfx,10);if(n>maxIdx)maxIdx=n}});nm=base+(maxIdx+1)};return}
       DB.inventory.push({id:DB.nextInvId++,name:nm,qty:qt,loc:lc,createdAt:Date.now(),_new:true});addLog('添加 '+nm+' '+qt+'('+lc+')','添加')}
     saveData(DB);hideModal();render()})}
 
@@ -386,13 +386,13 @@ document.getElementById('importExcelBtn').addEventListener('click',function(){
 var DSK='sk-6f997886ebeb426f9e9a4eb98767e626';
 function clean(r){return r.replace(/^[\s\u3000]+/g,'').replace(/[\s\u3000]+$/g,'').replace(/[\u3000\.,!?]+$/g,'')}
 
-async function aiAnalyze(raw){
+async function aiAnalyze(raw,context){
   var txt=clean(raw);if(!txt)return{action:'unknown',desc:'未检测到有效语音'};
   var locs=DB.locations.join(','),items=DB.inventory.map(function(s){return s.name+'('+s.loc+')'}).join(',');
-  try{
-    var r=await fetch('https://api.deepseek.com/v1/chat/completions',{
+    try{
+      var msgs=[{role:'system',content:'你是李阿姨小饭桌的AI助手。返回纯JSON。可用位置：'+locs+'。现有食材：'+items+'。action类型及其必填字段：add_stock(进货)需item(食材名)、qty(数量带单位如2斤)、loc(位置)。use_stock(消耗)需item、qty(消耗数量)。set_stock(设置)需item、qty。delete_stock(删除)需name。move_stock(转移)需item、qty、from_loc、to_loc。add_recipe(新菜谱)需name。recipe_ingredients(设食材)需name、ingredients。query(查询)需name。new_location(新位置)需loc。ask_qty(追问)需prompt。规则：数量必须带单位如2斤。如果位置不存在返回new_location。只说了食材没提数量返回ask_qty。如有多条用JSON数组。'}];if(context){msgs.push({role:'user',content:context.userMsg});msgs.push({role:'assistant',content:context.aiReply})}msgs.push({role:'user',content:txt});var r=await fetch('https://api.deepseek.com/v1/chat/completions',{
       method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+DSK},
-      body:JSON.stringify({model:'deepseek-chat',messages:[{role:'system',content:'你是李阿姨小饭桌的AI助手。返回纯JSON。可用位置：'+locs+'。现有食材：'+items+'。action类型及其必填字段：add_stock(进货)需item(食材名)、qty(数量带单位如2斤)、loc(位置)。use_stock(消耗)需item、qty。set_stock(设置)需item、qty。delete_stock(删除)需name。move_stock(转移)需item、qty、from_loc、to_loc。add_recipe(新菜谱)需name。recipe_ingredients(设食材)需name、ingredients。query(查询)需name。new_location(新位置)需loc。ask_qty(追问)需prompt。规则：数量必须带单位如2斤。如果位置不存在返回new_location。只说了食材没提数量返回ask_qty。如有多条用JSON数组。'},{role:'user',content:txt}]})});
+      body:JSON.stringify({model:'deepseek-chat',messages:msgs})});
     if(!r.ok)throw new Error('API '+r.status);
     var d=await r.json(),reply=d.choices[0].message.content.trim();
     if(reply.indexOf('[')===0){var arr=JSON.parse(reply);return arr}
@@ -404,18 +404,30 @@ async function aiAnalyze(raw){
   }catch(e){return{action:'unknown',desc:'AI出错: '+e.message}}
 }
 
-function execAI(res){
+function nextItemName(base){
+  var same=DB.inventory.filter(function(s){
+    return s.name===base||(s.name.length>base.length&&s.name.indexOf(base)===0&&/^\d+$/.test(s.name.substring(base.length)))
+  });
+  var maxIdx=1;
+  same.forEach(function(s){
+    var sfx=s.name.substring(base.length);
+    if(sfx){var n=parseInt(sfx,10);if(n>maxIdx)maxIdx=n}
+  });
+  return base+(maxIdx+1)}
+
+function execAI(res,lastInput){
   if(res.action==='unknown'){toast(res.desc);addLog('❌ '+res.desc,'AI');return}
-  if(res.action==='ask_qty'){toast('❓ '+(res.prompt||'请告诉我数量'));addLog('❓ AI: '+(res.prompt||'请告诉我数量'),'AI');return}
+  if(res.action==='ask_qty'){toast('❓ '+(res.prompt||'请告诉我数量'));addLog('❓ AI: '+(res.prompt||'请告诉我数量'),'AI');if(lastInput){pendingContext={userMsg:lastInput,aiReply:res.prompt||'请告诉我数量'}}return}
   if(res.action==='new_location'){pendingNewLoc=res.loc;nT.textContent='检测到新位置「'+res.loc+'」，是否添加？';nC.classList.add('show');addLog('📍 检测到新位置 '+res.loc,'AI');return}
   DB=getDB();var a=res.action,desc=res.desc;
-  if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){return s.name===res.item&&s.loc===lc});if(dup){dup.qty=res.qty;dup.createdAt=Date.now();addLog('✅ 更新 '+res.item+' '+res.qty+'('+lc+')','AI')}else{DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 '+res.item+' '+res.qty+'('+lc+')','AI')}saveData(DB);render();toast('✅ '+desc);return}
-  if(a==='use_stock'||a==='set_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}f.qty=res.qty;f.createdAt=Date.now();saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
+if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){return s.name===res.item&&s.loc===lc});if(dup){var newName=nextItemName(res.item);DB.inventory.push({id:DB.nextInvId++,name:newName,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 '+newName+' '+res.qty+'('+lc+')','AI')}else{DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 '+res.item+' '+res.qty+'('+lc+')','AI')}saveData(DB);render();toast('✅ '+desc);return}
+  if(a==='use_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}var sq=f.qty.match(/^(\d+(?:\.\d+)?)(.*)/);var mq=res.qty.match(/^(\d+(?:\.\d+)?)(.*)/);if(sq&&mq&&sq[2]===mq[2]){var n=parseFloat(sq[1])-parseFloat(mq[1]);if(n<=0){DB.inventory=DB.inventory.filter(function(s){return s!==f});saveData(DB);render();toast('🗑️ 消耗完毕 '+desc);addLog('🗑️ 消耗完毕 '+res.item,'AI')}else{f.qty=n+sq[2];f.createdAt=Date.now();saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI')}}else{toast('⚠️ 单位不一致，未消耗');addLog('⚠️ 单位不一致，未能消耗 '+res.item,'AI')}return}
+  if(a==='set_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}f.qty=res.qty;f.createdAt=Date.now();saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
   if(a==='delete_stock'){var idx=DB.inventory.findIndex(function(s){return s.name===res.name});if(idx===-1){toast('❌ 没有 '+res.name);addLog('❌ 未找到 '+res.name,'AI');return}DB.inventory.splice(idx,1);saveData(DB);render();toast('🗑️ '+desc);addLog('🗑️ '+desc,'AI');return}
-  if(a==='move_stock'){var src=DB.inventory.find(function(s){return s.name===res.item&&s.loc===res.from_loc});if(!src){toast('❌ 未找到');return}var moveQty=res.qty;var sq=src.qty.match(/^(\d+(?:\.\d+)?)(.*)/);var mq=moveQty.match(/^(\d+(?:\.\d+)?)(.*)/);if(sq&&mq&&sq[2]===mq[2]){var n=parseFloat(sq[1])-parseFloat(mq[1]);if(n<=0){DB.inventory=DB.inventory.filter(function(s){return s!==src})}else{src.qty=n+sq[2]}}else{DB.inventory=DB.inventory.filter(function(s){return s!==src})}var dst=DB.inventory.find(function(s){return s.name===res.item&&s.loc===res.to_loc});if(!dst){DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:moveQty,loc:res.to_loc,createdAt:src.createdAt,_new:true})}else{dst.qty=moveQty;if(!dst.createdAt)dst.createdAt=src.createdAt}saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
+if(a==='move_stock'){var src=DB.inventory.find(function(s){return s.name===res.item&&s.loc===res.from_loc});if(!src){toast('❌ 未找到');return}var moveQty=res.qty;var sq=src.qty.match(/^(\d+(?:\.\d+)?)(.*)/);var mq=moveQty.match(/^(\d+(?:\.\d+)?)(.*)/);if(sq&&mq&&sq[2]===mq[2]){var n=parseFloat(sq[1])-parseFloat(mq[1]);if(n<=0){DB.inventory=DB.inventory.filter(function(s){return s!==src})}else{src.qty=n+sq[2]}}var newItemName=nextItemName(res.item);DB.inventory.push({id:DB.nextInvId++,name:newItemName,qty:moveQty,loc:res.to_loc,createdAt:Date.now(),_new:true});saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
   if(a==='add_recipe'){if(DB.recipes.find(function(r){return r.name===res.name})){toast('⚠️ 菜谱已存在');return}DB.recipes.push({id:DB.nextRecipeId++,name:res.name,ingredients:'（待补充）',_new:true});saveData(DB);render();toast('➕ '+desc);addLog('➕ '+desc,'AI');return}
   if(a==='recipe_ingredients'){var f=DB.recipes.find(function(r){return r.name===res.name});if(f)f.ingredients=res.ingredients;else DB.recipes.push({id:DB.nextRecipeId++,name:res.name,ingredients:res.ingredients,_new:true});saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
-  if(a==='query'){var f=DB.inventory.find(function(s){return s.name===res.name});if(f){toast('🔍 '+res.name+': '+f.qty+' 在'+f.loc);addLog('🔍 '+res.name+': '+f.qty+' '+f.loc,'AI')}else{toast('🔍 没有 '+res.name);addLog('🔍 未找到 '+res.name,'AI')}render()}
+  if(a==='query'){var matches=DB.inventory.filter(function(s){return s.name.indexOf(res.name)!==-1});if(matches.length>0){var brief=matches.map(function(s){return s.name+' '+s.qty+'('+s.loc+')'}).join(', ');toast('🔍 '+matches.length+' 项');addLog('🔍 '+res.name+' '+matches.length+' 项: '+brief+','AI')}else{toast('🔍 '+res.name);addLog('🔍 '+res.name+','AI')}return}
 }
 // Voice Recognition
 function startListening(){
@@ -438,7 +450,7 @@ async function stopListening(quiet){
   if(!quiet&&finalTranscript.trim()){
     aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI 分析中...</span></div>';
     setStatus('processing','🤖 AI分析中...');
-try{var r=await aiAnalyze(finalTranscript);var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';var si=ie?'<span style="color:#e74c3c">❌</span>':'<span style="color:#2d6a4f">✅</span>';
+try{var r=await aiAnalyze(finalTranscript,pendingContext);pendingContext=null;var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';var si=ie?'<span style="color:#e74c3c">❌</span>':'<span style="color:#2d6a4f">✅</span>';
       var h='<div style="display:flex;align-items:center">'+si+' <span>📝 '+r.desc+'</span></div>';
       if(r.action==='add_stock'||r.action==='use_stock'||r.action==='set_stock')h+='<div style="margin-top:4px"><span class="tag">操作</span> <span class="key">'+r.item+'</span> → <span class="key">'+r.qty+'</span></div>';
       else if(r.action==='delete_stock')h+='<div style="margin-top:4px"><span class="tag">操作</span> 删除 <span class="key">'+r.name+'</span></div>';
@@ -446,7 +458,7 @@ try{var r=await aiAnalyze(finalTranscript);var results=Array.isArray(r)?r:[r];va
       else if(r.action==='add_recipe')h+='<div style="margin-top:4px"><span class="tag">操作</span> 新菜谱 <span class="key">'+r.name+'</span></div>';
       else if(r.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+r.loc+'</span></div>';
       else if(r.action==='ask_qty')h+='<div style="margin-top:4px"><span class="tag">追问</span> '+r.prompt+'</div>';
-      aR.innerHTML=h;setStatus('done','✅ 已完成');if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item)})}
+      aR.innerHTML=h;setStatus('done','✅ 已完成');if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item,finalTranscript)})}
     catch(e){aR.innerHTML='<div><span style="color:#e74c3c">❌</span> <span>AI请求失败: '+e.message+'</span></div>';setStatus('idle','❌ 分析失败')}}
   else if(!quiet){setStatus('idle','就绪，点击 🎤 开始语音输入')}}
 
@@ -470,7 +482,7 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
     vC.classList.add('show');
     rT.textContent = '打字: '+txt;
     aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI分析中...</span></div>';
-    aiAnalyze(txt).then(function(r){
+    aiAnalyze(txt,pendingContext).then(function(r){pendingContext=null;
       var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';
       var si=ie?'<span style=color:#e74c3c>X</span>':'<span style=color:#2d6a4f>V</span>';
       var h='<div style=display:flex;align-items:center>'+si+' <span> '+r.desc+'</span></div>';
@@ -480,7 +492,7 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
       else if(r.action==='add_recipe')h+='<div style=margin-top:4px><span class=tag>操作</span> 新菜谱 <span class=key>'+r.name+'</span></div>';
       else if(r.action==='new_location')h+='<div style=margin-top:4px><span class=tag>新位置</span> <span class=key>'+r.loc+'</span></div>';
       else if(r.action==='ask_qty')h+='<div style=margin-top:4px><span class=tag>追问</span> '+r.prompt+'</div>';
-      aR.innerHTML=h; setStatus('done','已完成'); if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item)});
+      aR.innerHTML=h; setStatus('done','已完成'); if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item,txt)});
     }).catch(function(e){
       aR.innerHTML='<div><span style=color:#e74c3c>X</span> <span>AI请求失败: '+e.message+'</span></div>';
       setStatus('idle','分析失败');
