@@ -216,7 +216,7 @@ function pushCloudData(d){var p=DATA_SHA?Promise.resolve():getSha();return p.the
 function loadData(){
   try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes){return d}}catch(e){}setTimeout(function(){alert('\u26a0\ufe0f \u65e0\u6cd5\u52a0\u8f7d\u6570\u636e\uff1a\u4e91\u7aef\u548c\u672c\u5730\u90fd\u6ca1\u6709\u6570\u636e')},500);var d={accounts:[{username:'admin',password:'admin',role:'admin',name:'管理员'}],locations:[],inventory:[],recipes:[],logs:[],nextInvId:1,nextRecipeId:1};
   localStorage.setItem(DB_KEY,JSON.stringify(d));return d}
-var _lastInvJSON='';function saveData(d){var ij=JSON.stringify(d.inventory);if(ij!==_lastInvJSON&&_lastInvJSON!==''){var iv=parseInt(localStorage.getItem(INV_VERSION_KEY)||'0')+1;localStorage.setItem(INV_VERSION_KEY,iv)}_lastInvJSON=ij;localStorage.setItem(DB_KEY,JSON.stringify(d));setSync("☁");pushCloudData(d).then(function(){setSync("✔")}).catch(function(){setSync("✖")})}
+var _lastInvJSON='';function saveData(d){var ij=JSON.stringify(d.inventory);if(ij!==_lastInvJSON&&_lastInvJSON!==''){var iv=parseInt(localStorage.getItem(INV_VERSION_KEY)||'0')+1;localStorage.setItem(INV_VERSION_KEY,iv)}_lastInvJSON=ij;d.lastUpdated=d.lastUpdated||Date.now();localStorage.setItem(DB_KEY,JSON.stringify(d));setSync('☁');pushCloudData(d).then(function(){setSync("✔")}).catch(function(){setSync("✖")})}
 function getDB(){return loadData()}
 
 var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false,pendingContext=null,cloudDataLoaded=false;
@@ -543,7 +543,7 @@ renderLogs();
 render();
 setStatus('idle','就绪，点击 🎤 开始语音输入');
 }
-fetchCloudData().then(function(cd){localStorage.setItem(DB_KEY,JSON.stringify(cd));DB=getDB();cloudDataLoaded=true;if(currentUser){renderLogs();render()}}).catch(function(){setSync("✖")})
+fetchCloudData().then(function(cd){var ld=getDB();if(ld&&ld.lastUpdated&&(!cd.lastUpdated||ld.lastUpdated>cd.lastUpdated)){pushCloudData(ld)}else{localStorage.setItem(DB_KEY,JSON.stringify(cd))}DB=getDB();cloudDataLoaded=true;if(currentUser){renderLogs();render()}}).catch(function(){setSync("✖")})
 
 /// ========== FIREBASE INTEGRATION (OPTIONAL) ==========
 /// To enable cloud sync across devices:
