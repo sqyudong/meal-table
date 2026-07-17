@@ -209,8 +209,8 @@ var DATA_SHA = null;
 // Auto-fetch accounts from server xlsx template
 fetch('accounts_template.xlsx').then(function(r){if(!r.ok)throw new Error();return r.arrayBuffer()}).then(function(buf){try{var wb=XLSX.read(new Uint8Array(buf),{type:'array'});var json=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);if(json&&json.length>0){var d=getDB();var newAcc=json.map(function(rw){var u=(rw.username||rw.账号||'').toString().trim();var p=(rw.password||rw.密码||'').toString().trim();var n=(rw.name||rw.姓名||u).toString().trim();var rl=(rw.role||rw.角色||'staff').toString().trim();return u?{username:u,password:p,role:rl==='admin'?'admin':'staff',name:n}:null}).filter(function(a){return a});if(newAcc.length>0){d.accounts=newAcc;saveData(d)}}}catch(e){}}).catch(function(){console.log('xlsx fetch fail')})
 
-function fetchCloudData(){return fetch('https://api.github.com/repos/'+GITHUB_REPO+'/contents/'+GITHUB_FILE,{headers:{'Authorization':'Bearer '+GITHUB_TOKEN}}).then(function(r){if(!r.ok)throw new Error();return r.json()}).then(function(d){DATA_SHA=d.sha;var c=decodeURIComponent(escape(atob(d.content)));return JSON.parse(c)});}
-function pushCloudData(d){var c=btoa(unescape(encodeURIComponent(JSON.stringify(d))));return fetch('https://api.github.com/repos/'+GITHUB_REPO+'/contents/'+GITHUB_FILE,{method:'PUT',headers:{'Authorization':'Bearer '+GITHUB_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({message:'sync data',content:c,sha:DATA_SHA})}).then(function(r){return r.json()}).then(function(r){if(r.content)DATA_SHA=r.content.sha});}
+function fetchCloudData(){return fetch('https://raw.githubusercontent.com/sqyudong/meal-table/main/data.json').then(function(r){if(!r.ok)throw new Error();return r.json()})}function getSha(){return fetch('https://api.github.com/repos/'+GITHUB_REPO+'/contents/'+GITHUB_FILE,{headers:{'Authorization':'Bearer '+GITHUB_TOKEN}}).then(function(r){return r.json()}).then(function(d){DATA_SHA=d.sha})}
+function pushCloudData(d){var p=DATA_SHA?Promise.resolve():getSha();return p.then(function(){if(!DATA_SHA)return getSha()}).then(function(){var c=btoa(unescape(encodeURIComponent(JSON.stringify(d))));return fetch('https://api.github.com/repos/'+GITHUB_REPO+'/contents/'+GITHUB_FILE,{method:'PUT',headers:{'Authorization':'Bearer '+GITHUB_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({message:'sync data',content:c,sha:DATA_SHA})})}).then(function(r){return r.json()}).then(function(r){if(r.content)DATA_SHA=r.content.sha})}
 function loadData(){
   try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes){return d}}catch(e){}setTimeout(function(){alert('\u26a0\ufe0f \u65e0\u6cd5\u52a0\u8f7d\u6570\u636e\uff1a\u4e91\u7aef\u548c\u672c\u5730\u90fd\u6ca1\u6709\u6570\u636e')},500);var d={accounts:[{username:'admin',password:'admin',role:'admin',name:'管理员'}],locations:['常温','1号冰箱','2号冰箱','3号冰箱','1号冰柜','2号冰柜','3号冰柜'],inventory:[],recipes:[],logs:[],nextInvId:1,nextRecipeId:1};
   saveData(d);return d}
@@ -446,7 +446,7 @@ async function stopListening(quiet){
       else if(r.action==='add_recipe')h+='<div style="margin-top:4px"><span class="tag">操作</span> 新菜谱 <span class="key">'+r.name+'</span></div>';
       else if(r.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+r.loc+'</span></div>';
       else if(r.action==='ask_qty')h+='<div style="margin-top:4px"><span class="tag">追问</span> '+r.prompt+'</div>';
-      aR.innerHTML=h;setStatus('done','✅ 已完成');if(typeof results!=='undefined')if(typeof results!=='undefined')if(typeof results!=='undefined')if(typeof results!=='undefined')results.forEach(function(item){execAI(item)})}
+      aR.innerHTML=h;setStatus('done','✅ 已完成');if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item)})}
     catch(e){aR.innerHTML='<div><span style="color:#e74c3c">❌</span> <span>AI请求失败: '+e.message+'</span></div>';setStatus('idle','❌ 分析失败')}}
   else if(!quiet){setStatus('idle','就绪，点击 🎤 开始语音输入')}}
 
@@ -480,7 +480,7 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
       else if(r.action==='add_recipe')h+='<div style=margin-top:4px><span class=tag>操作</span> 新菜谱 <span class=key>'+r.name+'</span></div>';
       else if(r.action==='new_location')h+='<div style=margin-top:4px><span class=tag>新位置</span> <span class=key>'+r.loc+'</span></div>';
       else if(r.action==='ask_qty')h+='<div style=margin-top:4px><span class=tag>追问</span> '+r.prompt+'</div>';
-      aR.innerHTML=h; setStatus('done','已完成'); if(typeof results!=='undefined')if(typeof results!=='undefined')if(typeof results!=='undefined')if(typeof results!=='undefined')results.forEach(function(item){execAI(item)});
+      aR.innerHTML=h; setStatus('done','已完成'); if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item)});
     }).catch(function(e){
       aR.innerHTML='<div><span style=color:#e74c3c>X</span> <span>AI请求失败: '+e.message+'</span></div>';
       setStatus('idle','分析失败');
@@ -585,6 +585,7 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
 
 
 
