@@ -311,7 +311,7 @@ function delRecipe(id){
 document.addEventListener('click',function(e){
   var t=e.target;
   if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='inv'){var id=parseInt(t.getAttribute('data-id'));var tr=t.closest('tr');var nm=tr?tr.querySelector('.name').textContent:'';var qt=tr?tr.querySelector('.qty').textContent:'';showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">"'+nm+'"('+qt+')</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="confirmDelBtn">确认删除</button></div>');document.getElementById('confirmDelBtn').addEventListener('click',function(){hideModal();delInv(id)})}
-  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='recipe'){var id=parseInt(t.getAttribute('data-id'));showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">确定要删除此菜谱吗？</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="confirmDelBtn">确认删除</button></div>');document.getElementById('confirmDelBtn').addEventListener('click',function(){hideModal();delRecipe(id)})}})
+  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='recipe'){var id=parseInt(t.getAttribute('data-id'));var rn=t.closest('tr').querySelector('.name').textContent;showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">"'+rn+'"</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="confirmDelBtn">确认删除</button></div>');document.getElementById('confirmDelBtn').addEventListener('click',function(){hideModal();delRecipe(id)})}})
 document.getElementById('locFilter').addEventListener('change',function(){locFilter=this.value;render()});
 document.getElementById('sortDurationBtn').addEventListener('click',function(){sortAsc=!sortAsc;this.textContent=sortAsc?'⏱️ 最新在前':'⏱️ 按时长排序';render()});
 document.getElementById('addInvBtn').addEventListener('click',function(){showAddInv()});
@@ -447,7 +447,7 @@ async function stopListening(quiet){
       else if(r.action==='add_recipe')h+='<div style="margin-top:4px"><span class="tag">操作</span> 新菜谱 <span class="key">'+r.name+'</span></div>';
       else if(r.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+r.loc+'</span></div>';
       else if(r.action==='ask_qty')h+='<div style="margin-top:4px"><span class="tag">追问</span> '+r.prompt+'</div>';
-      aR.innerHTML=h;setStatus('done','✅ 已完成');results.forEach(function(item){execAI(item)})}
+      aR.innerHTML=h;setStatus('done','✅ 已完成');if(typeof results!=='undefined')results.forEach(function(item){execAI(item)})}
     catch(e){aR.innerHTML='<div><span style="color:#e74c3c">❌</span> <span>AI请求失败: '+e.message+'</span></div>';setStatus('idle','❌ 分析失败')}}
   else if(!quiet){setStatus('idle','就绪，点击 🎤 开始语音输入')}}
 
@@ -481,7 +481,7 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
       else if(r.action==='add_recipe')h+='<div style=margin-top:4px><span class=tag>操作</span> 新菜谱 <span class=key>'+r.name+'</span></div>';
       else if(r.action==='new_location')h+='<div style=margin-top:4px><span class=tag>新位置</span> <span class=key>'+r.loc+'</span></div>';
       else if(r.action==='ask_qty')h+='<div style=margin-top:4px><span class=tag>追问</span> '+r.prompt+'</div>';
-      aR.innerHTML=h; setStatus('done','已完成'); results.forEach(function(item){execAI(item)});
+      aR.innerHTML=h; setStatus('done','已完成'); if(typeof results!=='undefined')results.forEach(function(item){execAI(item)});
     }).catch(function(e){
       aR.innerHTML='<div><span style=color:#e74c3c>X</span> <span>AI请求失败: '+e.message+'</span></div>';
       setStatus('idle','分析失败');
@@ -586,6 +586,7 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
 
 
 
