@@ -198,7 +198,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.4';
+var APP_VERSION = 'V1.0.5';
 var INV_VERSION_KEY = 'inv_ver';
 // Data sourced from data.json (GitHub)
 function setSync(s){var e=document.getElementById("syncStatus");if(e)e.textContent=s}
@@ -233,7 +233,7 @@ function addLog(msg,tp){
   var tag=tp?'<span class="op-tag">['+tp+']</span>':'';
   d.innerHTML='<span class="time">'+ti+'</span><span class="user">'+un+'</span>'+tag+'<span class="msg">'+msg+'</span>';
   
-  DB.logs.unshift({time:ti,ts:Date.now(),msg:msg,op:tp||'',user:un});if(DB.logs.length>200)DB.logs.splice(0,DB.logs.length-200);saveData(DB)}
+  DB.logs.unshift({time:ti,ts:Date.now(),msg:msg,op:tp||'',user:un});if(DB.logs.length>20)DB.logs.splice(0,DB.logs.length-20);saveData(DB)}
 function fmtDur(c){
   var d=Date.now()-c,h=Math.floor(d/3600000),da=Math.floor(h/24);
   if(h<1)return'刚刚';if(h<24)return h+'小时';return h+'小时 ('+da+'天)'}
@@ -520,7 +520,7 @@ renderLogs();
 render();
 setStatus('idle','就绪，点击 🎤 开始语音输入');
 }
-fetchCloudData().then(function(cd){localStorage.setItem(DB_KEY,JSON.stringify(cd));if(currentUser){renderLogs();render()}}).catch(function(){setSync("✖")})
+fetchCloudData().then(function(cd){if(!localStorage.getItem(DB_KEY)){localStorage.setItem(DB_KEY,JSON.stringify(cd));if(currentUser){renderLogs();render()}}}).catch(function(){setSync("✖")})
 
 /// ========== FIREBASE INTEGRATION (OPTIONAL) ==========
 /// To enable cloud sync across devices:
