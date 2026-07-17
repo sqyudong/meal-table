@@ -219,7 +219,7 @@ function loadData(){
 var _lastInvJSON='';function saveData(d){var ij=JSON.stringify(d.inventory);if(ij!==_lastInvJSON&&_lastInvJSON!==''){var iv=parseInt(localStorage.getItem(INV_VERSION_KEY)||'0')+1;localStorage.setItem(INV_VERSION_KEY,iv)}_lastInvJSON=ij;localStorage.setItem(DB_KEY,JSON.stringify(d));setSync("☁");pushCloudData(d).then(function(){setSync("✔")}).catch(function(){setSync("✖")})}
 function getDB(){return loadData()}
 
-var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false,pendingContext=null;
+var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false,pendingContext=null,cloudDataLoaded=false;
 var iB=document.getElementById('invBody'),rB=document.getElementById('recipeBody'),iC=document.getElementById('invCount'),rC=document.getElementById('recipeCount');
 var sD=document.getElementById('statusDot'),sT=document.getElementById('statusText'),vC=document.getElementById('voiceCard'),rT=document.getElementById('recogText'),aR=document.getElementById('analysisResult');
 var lL=document.getElementById('logList'),mB=document.getElementById('micBtn'),fL=document.getElementById('fabLabel'),tE=document.getElementById('toast'),tTimer=null;
@@ -322,8 +322,10 @@ document.getElementById('showAllLogsBtn').addEventListener('click',function(){lo
 
 // Login
 function login(u,p){try{if(!u||!p){document.getElementById('loginError').textContent='⚠️ 请输入账号和密码';return}
-  DB=getDB();var f=DB.accounts.find(function(a){return a.username===u&&a.password===p});
-  if(!f){document.getElementById('loginError').textContent='⚠️ 账号或密码错误';return}
+  DB=getDB();var foundUser=DB.accounts.find(function(a){return a.username===u});
+  if(!foundUser){document.getElementById('loginError').textContent=cloudDataLoaded?'❌ 账号不存在':'⏳ 数据加载中，请15秒后重试';return}
+  if(foundUser.password!==p){document.getElementById('loginError').textContent='🔑 密码错误';return}
+  var f=foundUser;
   currentUser=f;isAdmin=f.role==='admin';
   document.getElementById('loginScreen').style.display='none';document.getElementById('appMain').style.display='block';
   document.getElementById('roleIcon').textContent=isAdmin?'👑':'👤';
@@ -541,7 +543,7 @@ renderLogs();
 render();
 setStatus('idle','就绪，点击 🎤 开始语音输入');
 }
-fetchCloudData().then(function(cd){localStorage.setItem(DB_KEY,JSON.stringify(cd));DB=getDB();if(currentUser){renderLogs();render()}}).catch(function(){setSync("✖")})
+fetchCloudData().then(function(cd){localStorage.setItem(DB_KEY,JSON.stringify(cd));DB=getDB();cloudDataLoaded=true;if(currentUser){renderLogs();render()}}).catch(function(){setSync("✖")})
 
 /// ========== FIREBASE INTEGRATION (OPTIONAL) ==========
 /// To enable cloud sync across devices:
