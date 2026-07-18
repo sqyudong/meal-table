@@ -40,6 +40,9 @@ td.loc{font-size:12px;color:#888}
 .del-btn{background:none;border:none;color:#ccc;font-size:16px;cursor:pointer;padding:2px 6px}
 .warn-icon{display:inline-block;margin-left:2px;font-size:12px;cursor:help}
 .del-btn:active{background:#fee;color:#dc2f02}
+.icon-result{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;font-size:12px;font-weight:700;flex-shrink:0}
+.icon-result.ok{background:#2d6a4f;color:#fff}
+.icon-result.fail{background:#e74c3c;color:#fff}
 .status-bar{display:flex;align-items:center;justify-content:center;gap:8px;padding:8px 16px 2px;font-size:12px;color:#888}
 .status-dot{width:8px;height:8px;border-radius:50%;background:#bbb;transition:all .3s}
 .status-dot.listening{background:#dc2f02;animation:pulse .8s ease-in-out infinite}
@@ -206,7 +209,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.17';
+var APP_VERSION = 'V1.0.18';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -505,7 +508,7 @@ async function stopListening(quiet){
   if(!quiet&&finalTranscript.trim()){
     aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI 分析中...</span></div>';
     setStatus('processing','🤖 AI分析中...');
-try{var r=await aiAnalyze(finalTranscript,pendingContext);pendingContext=null;var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';var si=ie?'<span style="color:#e74c3c">❌</span>':'<span style="color:#2d6a4f">✅</span>';
+try{var r=await aiAnalyze(finalTranscript,pendingContext);pendingContext=null;var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';var si=ie?'<span class="icon-result fail">✕</span>':'<span class="icon-result ok">✓</span>';
       var h='<div style="display:flex;align-items:center">'+si+' <span>📝 '+lastResult.desc+'</span></div>';
       if(lastResult.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+lastResult.loc+'</span></div>';
       else if(lastResult.action==='ask_qty')h+='<div style="margin-top:4px"><span class="tag">追问</span> '+lastResult.prompt+'</div>';
@@ -535,7 +538,7 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
     aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI分析中...</span></div>';
     aiAnalyze(txt,pendingContext).then(function(r){pendingContext=null;
       var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';
-      var si=ie?'<span style=color:#e74c3c>X</span>':'<span style=color:#2d6a4f>V</span>';
+      var si=ie?'<span class="icon-result fail">✕</span>':'<span class="icon-result ok">✓</span>';
       var h='<div style=display:flex;align-items:center>'+si+' <span> '+lastResult.desc+'</span></div>';
       if(lastResult.action==='new_location')h+='<div style=margin-top:4px><span class=tag>新位置</span> <span class=key>'+lastResult.loc+'</span></div>';
       else if(lastResult.action==='ask_qty')h+='<div style=margin-top:4px><span class=tag>追问</span> '+lastResult.prompt+'</div>';
@@ -653,6 +656,7 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
 
 
 
