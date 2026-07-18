@@ -209,7 +209,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.22';
+var APP_VERSION = 'V1.0.23';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -441,7 +441,8 @@ function clean(r){return r.replace(/^[\s\u3000]+/g,'').replace(/[\s\u3000]+$/g,'
 async function aiAnalyze(raw,context){
   var txt=clean(raw);if(!txt)return{action:'unknown',desc:'未检测到有效语音'};
   var buyMatch=txt.match(/^买(?:了|点|的)?\s*(.+)$/);
-  if(buyMatch&&!/\d/.test(txt)&&buyMatch[1].length<=8&&buyMatch[1]!=='的'&&buyMatch[1]!=='点'&&!context){
+  var hasNum=/\d/.test(txt)||/[零一二三四五六七八九十百千万两]/.test(txt);
+  if(buyMatch&&!hasNum&&buyMatch[1].length<=8&&buyMatch[1]!=='的'&&buyMatch[1]!=='点'&&!context){
     return{action:'ask_qty',prompt:buyMatch[1].trim()+'买了多少？',desc:'询问数量'}
   }
   var locs=DB.locations.join(','),items=DB.inventory.map(function(s){return s.name+'('+s.loc+')'}).join(',');
@@ -657,6 +658,8 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
+
 
 
 
