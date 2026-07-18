@@ -209,7 +209,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.24';
+var APP_VERSION = 'V1.0.25';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -247,7 +247,7 @@ async function addLog(msg,tp){
   try{await sbPost("logs",{time:ti,ts:Date.now(),msg:msg,op:tp||"",user:un})}catch(e){}
   await refreshDB();renderLogs()}
 function fmtDur(c){
-  var t=typeof c==='number'?c:(typeof c==='string'?Date.parse(c):NaN);
+  var t=typeof c==='number'?c:(typeof c==='string'?Date.parse(c.endsWith('Z')?c:c+'Z'):NaN);
   if(isNaN(t))t=Date.now();
   var d=Date.now()-t;
   var ms=Math.floor(d/1000);
@@ -260,10 +260,12 @@ function fmtDur(c){
   return da+'天';
 }
 function expCls(l,c){
-  var h=(Date.now()-c)/3600000;
-  if(l.indexOf('常温')!==-1){if(h>48)return'exp-warn-red';if(h>24)return'exp-warn-yellow'}
-  else{var d=h/24;if(d>7)return'exp-warn-yellow'}
-  return''}
+  var ts=typeof c==='number'?c:(typeof c==='string'?Date.parse(c.endsWith('Z')?c:c+'Z'):NaN);
+  if(isNaN(ts)||ts<=0)return'';
+  var h=(Date.now()-ts)/3600000;
+  if(l.indexOf('常温')!==-1){if(h>48)return('exp-warn-red');if(h>24)return('exp-warn-yellow')}
+  else{var d=h/24;if(d>7)return('exp-warn-yellow')}
+  return('')}
 function render(){
   DB=getDB();
   var items=DB.inventory.slice();
