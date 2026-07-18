@@ -62,11 +62,6 @@ td.loc{font-size:12px;color:#888}
 .log-item .time{color:#ccc;font-size:10px;white-space:nowrap;min-width:44px}
 .log-item .user{color:#e85d04;font-size:10px;white-space:nowrap;min-width:28px;font-weight:500}
 .log-item .op-tag{color:#e85d04;font-size:10px;white-space:nowrap}
-.fab{position:fixed;bottom:28px;right:20px;width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff;border:none;font-size:26px;box-shadow:0 4px 20px rgba(220,47,2,.35);cursor:pointer;z-index:99;display:flex;align-items:center;justify-content:center}
-.fab.listening{box-shadow:0 4px 30px rgba(220,47,2,.6);animation:micPulse 1s ease-in-out infinite}
-@keyframes micPulse{0%,100%{box-shadow:0 4px 20px rgba(220,47,2,.35)}50%{box-shadow:0 4px 40px rgba(220,47,2,.7);transform:scale(1.05)}}
-.fab-label{position:fixed;bottom:92px;right:20px;font-size:11px;color:#999;background:rgba(0,0,0,.06);padding:3px 10px;border-radius:10px;pointer-events:none}
-.toast{position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);background:#333;color:#fff;padding:10px 20px;border-radius:10px;font-size:14px;z-index:999;opacity:0;transition:all .3s;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .empty-msg{text-align:center;padding:20px 0;color:#ddd;font-size:13px}
 .sp-wrap{display:flex;align-items:center;justify-content:center;gap:8px;padding:10px 0}
@@ -158,7 +153,7 @@ td.loc{font-size:12px;color:#888}
 </div>
 <div class="status-bar">
   <span class="status-dot idle" id="statusDot"></span>
-  <span id="statusText">就绪，点击 🎤 开始语音输入</span>
+  <span id="statusText">就绪，输入指令开始操作</span>
 </div>
 <div class="tab-bar">
   <button class="tab active" data-tab="inv">🏪 仓库管理</button>
@@ -176,7 +171,7 @@ td.loc{font-size:12px;color:#888}
   <div class="table-wrap"><table><thead><tr><th>菜名</th><th>食材</th><th></th></tr></thead><tbody id="recipeBody"></tbody></table></div>
 </div>
 <div id="voiceCard">
-  <div class="label">🎙️ 语音识别结果</div>
+  <div class="label">用户输入：</div>
   <div class="text" id="recogText"></div>
   <div class="label" style="margin-top:6px">🤖 AI 分析结果</div>
   <div class="analysis" id="analysisResult"></div>
@@ -185,8 +180,6 @@ td.loc{font-size:12px;color:#888}
   <div class="label">📋 操作记录 <span style="font-size:10px;color:#e85d04;cursor:pointer;margin-left:8px" id="showAllLogsBtn">显示全部</span></div>
   <div class="log-list" id="logList"><div class="empty-msg">暂无操作记录</div></div>
 </div>
-<button class="fab" id="micBtn">🎤</button>
-<div class="fab-label" id="fabLabel">点击说话</div>
 <div class="toast" id="toast"></div>
   <div class="input-bar" id="inputBar">
     <input type="text" id="textInput" placeholder="输入，如：买了2斤胡萝卜" autocomplete="off">
@@ -205,7 +198,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.29';
+var APP_VERSION = 'V1.0.30';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -229,10 +222,10 @@ function loadData(){
 function saveData(d){d.lastUpdated=d.lastUpdated||Date.now();localStorage.setItem(DB_KEY,JSON.stringify(d))}
 function getDB(){return DB||loadData()}
 
-var DB=getDB(),currentUser=null,isAdmin=false,sortMode="id",sortAsc=true,showAllInv=false,locFilter=[],isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false,pendingContext=null;
+var DB=getDB(),currentUser=null,isAdmin=false,sortMode="id",sortAsc=true,showAllInv=false,locFilter=[],,pendingContext=null;
 var iB=document.getElementById('invBody'),rB=document.getElementById('recipeBody'),rC=document.getElementById('recipeCount');
 var sD=document.getElementById('statusDot'),sT=document.getElementById('statusText'),vC=document.getElementById('voiceCard'),rT=document.getElementById('recogText'),aR=document.getElementById('analysisResult');
-var lL=document.getElementById('logList'),mB=document.getElementById('micBtn'),fL=document.getElementById('fabLabel'),tE=document.getElementById('toast'),tTimer=null;
+var lL=document.getElementById('logList'),tE=document.getElementById('toast'),tTimer=null;
 var mO=document.getElementById('modalOverlay'),mC=document.getElementById('modalContent'),nC=document.getElementById('newLocConfirm'),nT=document.getElementById('newLocText');
 
 function toast(m){tE.textContent=m;tE.classList.add('show');clearTimeout(tTimer);tTimer=setTimeout(function(){tE.classList.remove('show')},2500)}
@@ -492,53 +485,13 @@ if(a==='move_stock'){var src=DB.inventory.find(function(s){return s.name===res.i
   if(a==='query'){var matches=DB.inventory.filter(function(s){return s.name.indexOf(res.name)!==-1});if(matches.length>0){var brief=matches.map(function(s){return s.name+' '+s.qty+'('+s.loc+')'}).join(', ');toast('🔍 '+matches.length+' 项');addLog('🔍 '+res.name+' '+matches.length+' 项: '+brief, 'AI')}else{toast('🔍 '+res.name);addLog('🔍 '+res.name, 'AI')}return}
 }
 // Voice Recognition
-function startListening(){
-  var SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  if(!SR){setStatus('idle','❌ 浏览器不支持语音');mB.style.display='none';return}
-  setStatus('idle','请求麦克风权限...');
-  navigator.mediaDevices.getUserMedia({audio:true}).then(function(s){
-    s.getTracks().forEach(function(t){t.stop()});
-    finalTranscript='';isListening=true;userStoppedRecognition=false;aR.innerHTML='';vC.classList.remove('show');
-    var r=new SR();r.lang='zh-CN';r.continuous=true;r.interimResults=true;r.maxAlternatives=1;
-    r.onstart=function(){setStatus('listening','🎤 聆听中... 再次点击停止');mB.classList.add('listening');mB.textContent='🔴';fL.textContent='点击停止';fL.classList.add('active')};
-    r.onresult=function(e){var im='';for(var i=e.resultIndex;i<e.results.length;i++){var t=e.results[i][0].transcript;if(e.results[i].isFinal)finalTranscript+=t;else im+=t}rT.textContent=finalTranscript+im;vC.classList.add('show')};
-    r.onerror=function(e){if(e.error==='not-allowed'){setStatus('idle','⚠️ 需允许麦克风');toast('⚠️ 需要麦克风权限')}stopListening(true)};
-    r.onend=function(){if(isListening&&!userStoppedRecognition){try{r.start()}catch(e){}}};recognition=r;r.start()})
-  .catch(function(){setStatus('idle','⚠️ 麦克风权限被拒绝');toast('⚠️ 请在浏览器中允许麦克风权限')})}
-
-async function stopListening(quiet){
-  isListening=false;userStoppedRecognition=true;if(recognition){try{recognition.stop()}catch(e){}recognition=null}
-  mB.classList.remove('listening');mB.textContent='🎤';fL.textContent='点击说话';fL.classList.remove('active');
-  if(!quiet&&finalTranscript.trim()){
-    aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI 分析中...</span></div>';
-    setStatus('processing','🤖 AI分析中...');
-try{var r=await aiAnalyze(finalTranscript,pendingContext);pendingContext=null;var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';var si=ie?'<span class="icon-result fail">✕</span>':'<span class="icon-result ok">✓</span>';
-      var h='<div style="display:flex;align-items:center">'+si+' <span>📝 '+(lastResult.desc||'操作成功')+'</span></div>';
-      if(lastResult.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+lastResult.loc+'</span></div>';
-      else if(lastResult.action==='ask_qty')h+='<div style="margin-top:4px"><span class="tag">追问</span> '+lastResult.prompt+'</div>';
-      aR.innerHTML=h;setStatus('done','✅ 已完成');if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item,finalTranscript)})}
-    catch(e){aR.innerHTML='<div><span style="color:#e74c3c">❌</span> <span>AI请求失败: '+e.message+'</span></div>';setStatus('idle','❌ 分析失败')}}
-  else if(!quiet){setStatus('idle','就绪，点击 🎤 开始语音输入')}}
-
-mB.addEventListener('click',function(){if(isListening)stopListening(false);else startListening()});
-
-// New Location Confirm
-document.getElementById('newLocYes').addEventListener('click',async function(){
-  if(pendingNewLoc){DB=getDB();if(!DB.locations.includes(pendingNewLoc)){try{await sbPost('locations',{name:pendingNewLoc})}catch(e){}await refreshDB();addLog('📍 添加新位置 '+pendingNewLoc,'管理')}toast('✅ 已添加位置 '+pendingNewLoc)}
-  nC.classList.remove('show');pendingNewLoc=null;render()});
-document.getElementById('newLocNo').addEventListener('click',function(){nC.classList.remove('show');pendingNewLoc=null});
-
-// Service Worker
-  // Text input handler
-  document.getElementById('sendBtn').addEventListener('click', function(){ submitTextInput(); });
-  document.getElementById('textInput').addEventListener('keydown', function(e){ if(e.key==='Enter') submitTextInput(); });
-  function submitTextInput(){
+function submitTextInput(){
     var txt=document.getElementById('textInput').value.trim();
     if(!txt) return;
     document.getElementById('textInput').value = '';
     setStatus('processing','AI分析中...');
     vC.classList.add('show');
-    rT.textContent = '打字: '+txt;
+    rT.textContent = txt;
     aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI分析中...</span></div>';
     aiAnalyze(txt,pendingContext).then(function(r){pendingContext=null;
       var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';
@@ -594,7 +547,7 @@ refreshDB().then(function(){
   if(autoTime&&autoUser&&autoPass&&(Date.now()-parseInt(autoTime)<600000)){
     login(autoUser,autoPass)
   }else{
-    renderLogs();render();setStatus('idle','就绪，点击 🎤 开始语音输入');
+    renderLogs();render();setStatus('idle','就绪，输入指令开始操作');
   }
 }).catch(function(e){console.error("init error",e)})
 
