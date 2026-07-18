@@ -209,7 +209,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.21';
+var APP_VERSION = 'V1.0.22';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -446,7 +446,7 @@ async function aiAnalyze(raw,context){
   }
   var locs=DB.locations.join(','),items=DB.inventory.map(function(s){return s.name+'('+s.loc+')'}).join(',');
     try{
-      var msgs=[{role:'system',content:'你是李阿姨小饭桌的AI助手。返回纯JSON。可用位置：'+locs+'。现有食材：'+items+'。action类型及其必填字段：add_stock(进货)需item(食材名)、qty(数量，用户说啥就是啥，如:2斤、3盒、5个、10块钱的、1箱)、loc(位置)。use_stock(消耗)需item、qty(消耗数量)。set_stock(设置)需item、qty。delete_stock(删除)需name。move_stock(转移)需item、from_loc、to_loc（qty可选，不填则全部转移）。add_recipe(新菜谱)需name。recipe_ingredients(设食材)需name、ingredients。query(查询)需name。new_location(新位置)需loc。ask_qty(追问数量!!!)需prompt。规则：(1)任何数量单位(斤/盒/个/袋/箱/块钱的/把/串/根/条)都接受，支持中文数字(一=1、两=2)。(2)重要: add_stock如果用户没说数量,必须返回ask_qty追问!不能自己编数量!(3)位置不存在返回new_location。(4)如有多条用JSON数组。'}];if(context){msgs.push({role:'user',content:context.userMsg});msgs.push({role:'assistant',content:context.aiReply})}msgs.push({role:'user',content:txt});var r=await fetch('https://api.deepseek.com/v1/chat/completions',{
+      var msgs=[{role:'system',content:'你是李阿姨小饭桌的AI助手。返回纯JSON。可用位置：'+locs+'。现有食材：'+items+'。action类型及其必填字段：add_stock(进货)需item(食材名)、qty(数量，用户说啥就是啥，如:2斤、3盒、5个、10块钱的、1箱)、loc(位置)。use_stock(消耗)需item、qty(消耗数量)。set_stock(设置)需item、qty。delete_stock(删除)需name。move_stock(转移)需item、from_loc、to_loc（qty可选，不填则全部转移）。add_recipe(新菜谱)需name。recipe_ingredients(设食材)需name、ingredients。query(查询)需name。new_location(新位置)需loc。ask_qty(追问数量!!!)需prompt。规则：(1)任何数量单位(斤/盒/个/袋/箱/份/块钱的/把/串/根/条/碗/盘/瓶)都接受，支持中文数字(一=1、两=2)。(2)重要: add_stock如果用户没说数量,必须返回ask_qty追问!不能自己编数量!(3)位置不存在返回new_location。(4)如有多条用JSON数组。'}];if(context){msgs.push({role:'user',content:context.userMsg});msgs.push({role:'assistant',content:context.aiReply})}msgs.push({role:'user',content:txt});var r=await fetch('https://api.deepseek.com/v1/chat/completions',{
       method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+DSK},
       body:JSON.stringify({model:'deepseek-chat',messages:msgs})});
     if(!r.ok)throw new Error('API '+r.status);
@@ -657,6 +657,8 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
+
 
 
 
