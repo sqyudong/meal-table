@@ -89,6 +89,11 @@ td.loc{font-size:12px;color:#888}
 #modalOverlay .modal .modal-btns button{flex:1;padding:10px;border-radius:8px;border:none;font-size:14px;font-weight:500;cursor:pointer}
 #modalOverlay .modal .modal-btns .btn-cancel{background:#f5f5f5;color:#666}
 #modalOverlay .modal .modal-btns .btn-confirm{background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff}
+.loc-clickable{cursor:pointer;color:#e85d04;border-bottom:1px dashed #e85d04;transition:all .2s}
+.loc-clickable:hover{color:#dc2f02;border-bottom-color:#dc2f02;background:rgba(232,93,4,.08);border-radius:3px}
+.loc-picker{display:flex;flex-direction:column;gap:6px}
+.loc-picker .loc-option{padding:10px 14px;border:1px solid #fef0e0;border-radius:10px;font-size:14px;cursor:pointer;transition:all .2s;background:#fffaf3}
+.loc-picker .loc-option:hover{background:#fdd5b5;border-color:#e85d04}
 .account-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #fef5e7}
 .account-item .info{display:flex;align-items:center;gap:8px}
 .account-item .avatar{width:32px;height:32px;border-radius:50%;background:#fef0e0;color:#e85d04;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600}
@@ -201,7 +206,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.9';
+var APP_VERSION = 'V1.0.10';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -239,8 +244,16 @@ async function addLog(msg,tp){
   try{await sbPost("logs",{time:ti,ts:Date.now(),msg:msg,op:tp||"",user:un})}catch(e){}
   await refreshDB();renderLogs()}
 function fmtDur(c){
-  var d=Date.now()-c,h=Math.floor(d/3600000),da=Math.floor(h/24);
-  if(h<1)return'刚刚';if(h<24)return h+'小时';return h+'小时 ('+da+'天)'}
+  var d=Date.now()-c;
+  var ms=Math.floor(d/1000);
+  var mi=Math.floor(ms/60);
+  var h=Math.floor(mi/60);
+  var da=Math.floor(h/24);
+  if(ms<60) return ms+'秒';
+  if(mi<60) return mi+'分钟';
+  if(h<24) return h+'小时';
+  return da+'天';
+}
 function expCls(l,c){
   var h=(Date.now()-c)/3600000;
   if(l.indexOf('常温')!==-1){if(h>48)return'exp-warn-red';if(h>24)return'exp-warn-yellow'}
@@ -259,7 +272,7 @@ function render(){
       var wi=ex==='exp-warn-yellow'?'⚠️':(ex==='exp-warn-red'?'🚨':'');
       if(ex)tr.className=ex;if(s._new)tr.classList.add('fade-in');
       var cd=true;
-      var nf=s.name+(getWarnings().includes(s.id)?'<span class=warn-icon title="部分食材已转移">❗</span>':'');tr.innerHTML='<td class="seq">'+(i+1)+'</td><td class="name">'+nf+'</td><td class="qty">'+s.qty+'</td><td>'+wi+' '+d+'</td><td class="loc">'+s.loc+'</td>'+(cd?'<td><button class="del-btn" data-id="'+s.id+'" data-type="inv">✕</button></td>':'<td></td>');
+      var nf=s.name+(getWarnings().includes(s.id)?'<span class=warn-icon title="部分食材已转移">❗</span>':'');tr.innerHTML='<td class="seq">'+(i+1)+'</td><td class="name">'+nf+'</td><td class="qty">'+s.qty+'</td><td>'+wi+' '+d+'</td><td><span class="loc-clickable" data-id="'+s.id+'">'+s.loc+'</span></td>'+(cd?'<td><button class="del-btn" data-id="'+s.id+'" data-type="inv">✕</button></td>':'<td></td>');
       iB.appendChild(tr)})}
   iC.textContent=DB.inventory.length+' 项';
   rB.innerHTML='';
@@ -278,6 +291,16 @@ function render(){
 function showModal(html){mC.innerHTML=html;mO.classList.add('show')}
 function hideModal(){mO.classList.remove('show')}
 mO.addEventListener('click',function(e){if(e.target===mO)hideModal()})
+function showLocPicker(id,cur){
+  var opts=DB.locations.map(function(l){
+    return'<div class="loc-option" data-loc="'+l+'"'+(l===cur?' style="background:#fef0e0;color:#e85d04;font-weight:500"':'')+'>'+l+(l===cur?' ✓':'')+'</div>'
+  }).join('');
+  showModal('<h3>📍 选择新位置</h3><div class="loc-picker">'+opts+'</div>');
+  document.querySelectorAll('.loc-option').forEach(function(el){
+    el.addEventListener('click',async function(){
+      var nl=this.getAttribute('data-loc');if(nl===cur){hideModal();return}
+      try{await sbPatch('inventory',{loc:nl},'id=eq.'+id)}catch(e){}
+      await refreshDB();render();toast('✅ 已移至 '+nl);hideModal()})})}
 
 function showAddInv(n,q,l,id){
   var isE=!!id,locs=DB.locations.map(function(x){return'<option value="'+x+'"'+(x===l?'selected':'')+'>'+x+'</option>'}).join('');
@@ -318,7 +341,8 @@ async function delRecipe(id){
 document.addEventListener('click',function(e){
   var t=e.target;
   if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='inv'){var id=parseInt(t.getAttribute('data-id'));var tr=t.closest('tr');var nm=tr?tr.querySelector('.name').textContent:'';var qt=tr?tr.querySelector('.qty').textContent:'';showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">"'+nm+'"('+qt+')</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="confirmDelBtn">确认删除</button></div>');document.getElementById('confirmDelBtn').addEventListener('click',function(){hideModal();delInv(id)})}
-  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='recipe'){var id=parseInt(t.getAttribute('data-id'));var rn=t.closest('tr').querySelector('.name').textContent;showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">"'+rn+'"</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="confirmDelBtn">确认删除</button></div>');document.getElementById('confirmDelBtn').addEventListener('click',function(){hideModal();delRecipe(id)})}})
+  if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='recipe'){var id=parseInt(t.getAttribute('data-id'));var rn=t.closest('tr').querySelector('.name').textContent;showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">"'+rn+'"</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="confirmDelBtn">确认删除</button></div>');document.getElementById('confirmDelBtn').addEventListener('click',function(){hideModal();delRecipe(id)})}
+  if(t.classList.contains('loc-clickable')){var id=parseInt(t.getAttribute('data-id'));showLocPicker(id,t.textContent.trim())}})
 document.getElementById('locFilter').addEventListener('change',function(){locFilter=this.value;render()});
 document.getElementById('sortDurationBtn').addEventListener('click',function(){sortAsc=!sortAsc;this.textContent=sortAsc?'⏱️ 最新在前':'⏱️ 按时长排序';render()});
 document.getElementById('addInvBtn').addEventListener('click',function(){showAddInv()});
