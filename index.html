@@ -209,7 +209,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.23';
+var APP_VERSION = 'V1.0.24';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -476,6 +476,7 @@ function getWarnings(){try{return JSON.parse(localStorage.getItem('liayi_warning
 function addWarning(id){var ws=getWarnings();if(!ws.includes(id)){ws.push(id);localStorage.setItem('liayi_warnings',JSON.stringify(ws))}}
 
 async function execAI(res,lastInput){
+  if(!res.desc)res.desc=res.action||'操作成功';
   if(res.action==='unknown'){toast(res.desc);addLog('❌ '+res.desc,'AI');return}
   if(res.action==='ask_qty'){toast('❓ '+(res.prompt||'请告诉我数量'));addLog('❓ AI: '+(res.prompt||'请告诉我数量'),'AI');if(lastInput){pendingContext={userMsg:lastInput,aiReply:res.prompt||'请告诉我数量'}}return}
   if(res.action==='new_location'){pendingNewLoc=res.loc;nT.textContent='检测到新位置「'+res.loc+'」，是否添加？';nC.classList.add('show');addLog('📍 检测到新位置 '+res.loc,'AI');return}
@@ -511,7 +512,7 @@ async function stopListening(quiet){
     aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI 分析中...</span></div>';
     setStatus('processing','🤖 AI分析中...');
 try{var r=await aiAnalyze(finalTranscript,pendingContext);pendingContext=null;var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';var si=ie?'<span class="icon-result fail">✕</span>':'<span class="icon-result ok">✓</span>';
-      var h='<div style="display:flex;align-items:center">'+si+' <span>📝 '+lastResult.desc+'</span></div>';
+      var h='<div style="display:flex;align-items:center">'+si+' <span>📝 '+(lastResult.desc||'操作成功')+'</span></div>';
       if(lastResult.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+lastResult.loc+'</span></div>';
       else if(lastResult.action==='ask_qty')h+='<div style="margin-top:4px"><span class="tag">追问</span> '+lastResult.prompt+'</div>';
       aR.innerHTML=h;setStatus('done','✅ 已完成');if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item,finalTranscript)})}
@@ -541,7 +542,7 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
     aiAnalyze(txt,pendingContext).then(function(r){pendingContext=null;
       var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';
       var si=ie?'<span class="icon-result fail">✕</span>':'<span class="icon-result ok">✓</span>';
-      var h='<div style=display:flex;align-items:center>'+si+' <span> '+lastResult.desc+'</span></div>';
+      var h='<div style=display:flex;align-items:center>'+si+' <span> '+(lastResult.desc||'操作成功')+'</span></div>';
       if(lastResult.action==='new_location')h+='<div style=margin-top:4px><span class=tag>新位置</span> <span class=key>'+lastResult.loc+'</span></div>';
       else if(lastResult.action==='ask_qty')h+='<div style=margin-top:4px><span class=tag>追问</span> '+lastResult.prompt+'</div>';
       aR.innerHTML=h; setStatus('done','已完成'); if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item,txt)});
@@ -658,6 +659,7 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
 
 
 
