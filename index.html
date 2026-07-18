@@ -206,7 +206,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.16';
+var APP_VERSION = 'V1.0.17';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -506,9 +506,9 @@ async function stopListening(quiet){
     aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI 分析中...</span></div>';
     setStatus('processing','🤖 AI分析中...');
 try{var r=await aiAnalyze(finalTranscript,pendingContext);pendingContext=null;var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';var si=ie?'<span style="color:#e74c3c">❌</span>':'<span style="color:#2d6a4f">✅</span>';
-      var h='<div style="display:flex;align-items:center">'+si+' <span>📝 '+r.desc+'</span></div>';
-      if(r.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+r.loc+'</span></div>';
-      else if(r.action==='ask_qty')h+='<div style="margin-top:4px"><span class="tag">追问</span> '+r.prompt+'</div>';
+      var h='<div style="display:flex;align-items:center">'+si+' <span>📝 '+lastResult.desc+'</span></div>';
+      if(lastResult.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+lastResult.loc+'</span></div>';
+      else if(lastResult.action==='ask_qty')h+='<div style="margin-top:4px"><span class="tag">追问</span> '+lastResult.prompt+'</div>';
       aR.innerHTML=h;setStatus('done','✅ 已完成');if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item,finalTranscript)})}
     catch(e){aR.innerHTML='<div><span style="color:#e74c3c">❌</span> <span>AI请求失败: '+e.message+'</span></div>';setStatus('idle','❌ 分析失败')}}
   else if(!quiet){setStatus('idle','就绪，点击 🎤 开始语音输入')}}
@@ -536,9 +536,9 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
     aiAnalyze(txt,pendingContext).then(function(r){pendingContext=null;
       var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';
       var si=ie?'<span style=color:#e74c3c>X</span>':'<span style=color:#2d6a4f>V</span>';
-      var h='<div style=display:flex;align-items:center>'+si+' <span> '+r.desc+'</span></div>';
-      if(r.action==='new_location')h+='<div style=margin-top:4px><span class=tag>新位置</span> <span class=key>'+r.loc+'</span></div>';
-      else if(r.action==='ask_qty')h+='<div style=margin-top:4px><span class=tag>追问</span> '+r.prompt+'</div>';
+      var h='<div style=display:flex;align-items:center>'+si+' <span> '+lastResult.desc+'</span></div>';
+      if(lastResult.action==='new_location')h+='<div style=margin-top:4px><span class=tag>新位置</span> <span class=key>'+lastResult.loc+'</span></div>';
+      else if(lastResult.action==='ask_qty')h+='<div style=margin-top:4px><span class=tag>追问</span> '+lastResult.prompt+'</div>';
       aR.innerHTML=h; setStatus('done','已完成'); if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item,txt)});
     }).catch(function(e){
       aR.innerHTML='<div><span style=color:#e74c3c>X</span> <span>AI请求失败: '+e.message+'</span></div>';
@@ -653,6 +653,7 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
 
 
 
