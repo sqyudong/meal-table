@@ -206,7 +206,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.13';
+var APP_VERSION = 'V1.0.14';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -311,15 +311,15 @@ function showAddInv(n,q,l,id){
     var nm=document.getElementById('mIn').value.trim(),qt=document.getElementById('mIq').value.trim(),lc=document.getElementById('mIl').value;
     if(!nm||!qt){toast('⚠️ 请填写食材和数量');return}
    DB=getDB();
-   if(isE){var f=DB.inventory.find(function(s){return s.id===id});if(f){f.name=nm;f.qty=qt;f.loc=lc}addLog('编辑 '+nm+' '+qt+'('+lc+')','编辑')}else{
+   if(isE){var f=DB.inventory.find(function(s){return s.id===id});if(f){f.name=nm;f.qty=qt;f.loc=lc}addLog('编辑 ['+nm+'，'+qt+'，'+lc+']','编辑')}else{
       var existing=DB.inventory.filter(function(s){return s.loc===lc&&(s.name===nm||(s.name.length>nm.length&&s.name.indexOf(nm)===0&&/^\d+$/.test(s.name.substring(nm.length))))});if(existing.length>0){var base=nm;var maxIdx=1;existing.forEach(function(s){var sfx=s.name.substring(base.length);if(sfx){var n=parseInt(sfx,10);if(n>maxIdx)maxIdx=n}});nm=base+(maxIdx+1)}}
     try{await sbPost('inventory',{name:nm,qty:qt,loc:lc})}catch(e){}
-    await refreshDB();addLog('添加 '+nm+' '+qt+'('+lc+')','添加');hideModal();render()})}
+    await refreshDB();addLog('添加 ['+nm+'，'+qt+'，'+lc+']','添加');hideModal();render()})}
 
 async function delInv(id){
   DB=getDB();var idx=DB.inventory.findIndex(function(s){return s.id===id});
   if(idx===-1)return;var nm=DB.inventory[idx].name;var qt=DB.inventory[idx].qty;try{await sbDelete('inventory','id=eq.'+id)}catch(e){}
-  await refreshDB();addLog('删除 '+nm+'('+qt+')','删除');render();toast('🗑️ 已删除 '+nm)}
+  await refreshDB();addLog('删除 ['+nm+'，'+qt+']','删除');render();toast('🗑️ 已删除 '+nm)}
 
 function showAddRecipe(n,i,id){
   var isE=!!id;
@@ -446,7 +446,7 @@ async function aiAnalyze(raw,context){
     if(reply.indexOf('`')!==-1)reply=reply.replace(/`(?:json)?\n?/g,'').trim();
     var res=JSON.parse(reply);
     if(!res.action)throw new Error('no action');
-    if(!res.desc){var dm={add_stock:'进货 '+(res.item||'')+' '+(res.qty||''),use_stock:'消耗 '+(res.item||'')+' '+(res.qty||''),set_stock:'设置 '+(res.item||'')+'='+(res.qty||''),delete_stock:'删除 '+(res.name||''),move_stock:'转移 '+(res.item||'')+' '+(res.qty||'')+' 到'+(res.to_loc||''),add_recipe:'新菜谱 '+(res.name||''),recipe_ingredients:'设置 '+(res.name||'')+' 食材',query:'查询 '+(res.name||''),new_location:'发现 '+(res.loc||''),ask_qty:'询问数量'};res.desc=dm[res.action]||res.action}
+    if(!res.desc){var dm={add_stock:'进货 ['+(res.item||'')+'，'+(res.qty||'')+'，'+(res.loc||'常温')+']',use_stock:'消耗 '+(res.item||'')+' '+(res.qty||''),set_stock:'设置 '+(res.item||'')+'='+(res.qty||''),delete_stock:'删除 ['+(res.name||'')+']',move_stock:'转移 '+(res.item||'')+' '+(res.qty||'')+' 到'+(res.to_loc||''),add_recipe:'新菜谱 '+(res.name||''),recipe_ingredients:'设置 '+(res.name||'')+' 食材',query:'查询 '+(res.name||''),new_location:'发现 '+(res.loc||''),ask_qty:'询问数量'};res.desc=dm[res.action]||res.action}
     return res
   }catch(e){return{action:'unknown',desc:'AI出错: '+e.message}}
 }
@@ -470,7 +470,7 @@ async function execAI(res,lastInput){
   if(res.action==='ask_qty'){toast('❓ '+(res.prompt||'请告诉我数量'));addLog('❓ AI: '+(res.prompt||'请告诉我数量'),'AI');if(lastInput){pendingContext={userMsg:lastInput,aiReply:res.prompt||'请告诉我数量'}}return}
   if(res.action==='new_location'){pendingNewLoc=res.loc;nT.textContent='检测到新位置「'+res.loc+'」，是否添加？';nC.classList.add('show');addLog('📍 检测到新位置 '+res.loc,'AI');return}
   DB=getDB();var a=res.action,desc=res.desc;
-if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){return s.name===res.item&&s.loc===lc});if(dup){var newName=nextItemName(res.item);DB.inventory.push({id:DB.nextInvId++,name:newName,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 '+newName+' '+res.qty+'('+lc+')','AI')}else{DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 '+res.item+' '+res.qty+'('+lc+')','AI')}await sbPost('inventory',{name:newName||res.item,qty:res.qty,loc:lc});await refreshDB();render();toast('✅ '+desc);return}
+if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){return s.name===res.item&&s.loc===lc});if(dup){var newName=nextItemName(res.item);DB.inventory.push({id:DB.nextInvId++,name:newName,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 ['+newName+'，'+res.qty+'，'+lc+']','AI')}else{DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 ['+res.item+'，'+res.qty+'，'+lc+']','AI')}await sbPost('inventory',{name:newName||res.item,qty:res.qty,loc:lc});await refreshDB();render();toast('✅ '+desc);return}
   if(a==='use_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}var sq=f.qty.match(/^(\d+(?:\.\d+)?)(.*)/);var mq=res.qty.match(/^(\d+(?:\.\d+)?)(.*)/);if(sq&&mq&&sq[2]===mq[2]){var n=parseFloat(sq[1])-parseFloat(mq[1]);if(n<=0){try{await sbDelete('inventory','id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('🗑️ 消耗完毕 '+desc);addLog('🗑️ 消耗完毕 '+res.item,'AI')}else{try{await sbPatch('inventory',{qty:n+sq[2]},'id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('✅ '+desc);addLog('✅ '+desc,'AI')}}else{toast('⚠️ 单位不一致，未消耗');addLog('⚠️ 单位不一致，未能消耗 '+res.item,'AI')}return}
   if(a==='set_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}try{await sbPatch('inventory',{qty:res.qty},'id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
   if(a==='delete_stock'){var idx=DB.inventory.findIndex(function(s){return s.name===res.name});if(idx===-1){toast('❌ 没有 '+res.name);addLog('❌ 未找到 '+res.name,'AI');return}try{await sbDelete('inventory','name=eq.'+encodeURIComponent(res.name))}catch(e){}await refreshDB();render();toast('🗑️ '+desc);addLog('🗑️ '+desc,'AI');return}
@@ -502,11 +502,7 @@ async function stopListening(quiet){
     setStatus('processing','🤖 AI分析中...');
 try{var r=await aiAnalyze(finalTranscript,pendingContext);pendingContext=null;var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';var si=ie?'<span style="color:#e74c3c">❌</span>':'<span style="color:#2d6a4f">✅</span>';
       var h='<div style="display:flex;align-items:center">'+si+' <span>📝 '+r.desc+'</span></div>';
-      if(r.action==='add_stock'||r.action==='use_stock'||r.action==='set_stock')h+='<div style="margin-top:4px"><span class="tag">操作</span> <span class="key">'+r.item+'</span> → <span class="key">'+r.qty+'</span></div>';
-      else if(r.action==='delete_stock')h+='<div style="margin-top:4px"><span class="tag">操作</span> 删除 <span class="key">'+r.name+'</span></div>';
-      else if(r.action==='move_stock')h+='<div style="margin-top:4px"><span class="tag">操作</span> 转移 <span class="key">'+r.item+'</span> → <span class="key">'+r.to_loc+'</span></div>';
-      else if(r.action==='add_recipe')h+='<div style="margin-top:4px"><span class="tag">操作</span> 新菜谱 <span class="key">'+r.name+'</span></div>';
-      else if(r.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+r.loc+'</span></div>';
+      if(r.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+r.loc+'</span></div>';
       else if(r.action==='ask_qty')h+='<div style="margin-top:4px"><span class="tag">追问</span> '+r.prompt+'</div>';
       aR.innerHTML=h;setStatus('done','✅ 已完成');if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item,finalTranscript)})}
     catch(e){aR.innerHTML='<div><span style="color:#e74c3c">❌</span> <span>AI请求失败: '+e.message+'</span></div>';setStatus('idle','❌ 分析失败')}}
@@ -536,11 +532,7 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
       var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';
       var si=ie?'<span style=color:#e74c3c>X</span>':'<span style=color:#2d6a4f>V</span>';
       var h='<div style=display:flex;align-items:center>'+si+' <span> '+r.desc+'</span></div>';
-      if(r.action==='add_stock'||r.action==='use_stock'||r.action==='set_stock')h+='<div style=margin-top:4px><span class=tag>操作</span> <span class=key>'+r.item+'</span> -> <span class=key>'+r.qty+'</span></div>';
-      else if(r.action==='delete_stock')h+='<div style=margin-top:4px><span class=tag>操作</span> 删除 <span class=key>'+r.name+'</span></div>';
-      else if(r.action==='move_stock')h+='<div style=margin-top:4px><span class=tag>操作</span> 转移 '+r.item+' -> '+r.to_loc+'</div>';
-      else if(r.action==='add_recipe')h+='<div style=margin-top:4px><span class=tag>操作</span> 新菜谱 <span class=key>'+r.name+'</span></div>';
-      else if(r.action==='new_location')h+='<div style=margin-top:4px><span class=tag>新位置</span> <span class=key>'+r.loc+'</span></div>';
+      if(r.action==='new_location')h+='<div style=margin-top:4px><span class=tag>新位置</span> <span class=key>'+r.loc+'</span></div>';
       else if(r.action==='ask_qty')h+='<div style=margin-top:4px><span class=tag>追问</span> '+r.prompt+'</div>';
       aR.innerHTML=h; setStatus('done','已完成'); if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item,txt)});
     }).catch(function(e){
@@ -643,6 +635,9 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
+
+
 
 
 
