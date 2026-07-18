@@ -307,7 +307,7 @@ function showAddRecipe(n,i,id){
       try{await sbPost('recipes',{name:nm,ingredients:ig||'（待补充）'})}catch(e){}
     await refreshDB();addLog('添加 '+nm,'添加');hideModal();render()})}
 
-async }function delRecipe(id){
+async function delRecipe(id){
   DB=getDB();var idx=DB.recipes.findIndex(function(r){return r.id===id});
   if(idx===-1)return;var nm=DB.recipes[idx].name;try{await sbDelete('recipes','id=eq.'+id)}catch(e){}
   await refreshDB();addLog('删除 '+nm,'删除');render();toast('🗑️ 已删除 '+nm)}
