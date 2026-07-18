@@ -288,7 +288,7 @@ function showAddInv(n,q,l,id){
    if(isE){var f=DB.inventory.find(function(s){return s.id===id});if(f){f.name=nm;f.qty=qt;f.loc=lc}addLog('编辑 '+nm+' '+qt+'('+lc+')','编辑')}else{
       var existing=DB.inventory.filter(function(s){return s.loc===lc&&(s.name===nm||(s.name.length>nm.length&&s.name.indexOf(nm)===0&&/^\d+$/.test(s.name.substring(nm.length))))});if(existing.length>0){var base=nm;var maxIdx=1;existing.forEach(function(s){var sfx=s.name.substring(base.length);if(sfx){var n=parseInt(sfx,10);if(n>maxIdx)maxIdx=n}});nm=base+(maxIdx+1)}}
     try{await sbPost('inventory',{name:nm,qty:qt,loc:lc})}catch(e){}
-    await refreshDB();addLog('添加 '+nm+' '+qt+'('+lc+')','添加');hideModal();render()})()}
+    await refreshDB();addLog('添加 '+nm+' '+qt+'('+lc+')','添加');hideModal();render()})}
 
 async function delInv(id){
   DB=getDB();var idx=DB.inventory.findIndex(function(s){return s.id===id});
@@ -305,9 +305,9 @@ function showAddRecipe(n,i,id){
     if(isE){var f=DB.recipes.find(function(r){return r.id===id});if(f){f.name=nm;f.ingredients=ig||'（待补充）'}addLog('编辑 '+nm,'编辑')}else{
       if(DB.recipes.find(function(r){return r.name===nm})){toast('⚠️ 菜谱 '+nm+' 已存在');return}
       try{await sbPost('recipes',{name:nm,ingredients:ig||'（待补充）'})}catch(e){}
-    await refreshDB();addLog('添加 '+nm,'添加');hideModal();render()})()}
+    await refreshDB();addLog('添加 '+nm,'添加');hideModal();render()})}
 
-async function delRecipe(id){
+async }function delRecipe(id){
   DB=getDB();var idx=DB.recipes.findIndex(function(r){return r.id===id});
   if(idx===-1)return;var nm=DB.recipes[idx].name;try{await sbDelete('recipes','id=eq.'+id)}catch(e){}
   await refreshDB();addLog('删除 '+nm,'删除');render();toast('🗑️ 已删除 '+nm)}
@@ -607,6 +607,7 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
 
 
 
