@@ -209,7 +209,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.20';
+var APP_VERSION = 'V1.0.21';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -298,7 +298,7 @@ function hideModal(){mO.classList.remove('show')}
 mO.addEventListener('click',function(e){if(e.target===mO)hideModal()})
 function getUndoItems(){try{return JSON.parse(localStorage.getItem('liayi_undo_items'))||[]}catch(e){return[]}}
 function saveUndoItem(it){var u=getUndoItems();it.undoId=Date.now()+Math.random().toString(36).slice(2,8);u.push(it);localStorage.setItem('liayi_undo_items',JSON.stringify(u))}
-async function undoDelete(undoId){var u=getUndoItems();var idx=u.findIndex(function(x){return x.undoId===undoId});if(idx===-1){toast('❌ 撤回失败，数据已过期');return}var it=u[idx];if(Date.now()-it.ts>300000){toast('⏰ 已超过5分钟，无法撤回');localStorage.setItem('liayi_undo_items',JSON.stringify(u.filter(function(x){return x.undoId!==undoId})));return}try{await sbPost('inventory',{name:it.name,qty:it.qty,loc:it.loc})}catch(e){}localStorage.setItem('liayi_undo_items',JSON.stringify(u.filter(function(x){return x.undoId!==undoId})));await refreshDB();addLog('↩️ 撤回删除 ['+it.name+'，'+it.qty+'，'+it.loc+']','撤回');renderLogs();render();toast('↩️ 已撤回 '+it.name)}
+async function undoDelete(undoId){var u=getUndoItems();var idx=u.findIndex(function(x){return x.undoId===undoId});if(idx===-1){toast('❌ 撤回失败，数据已过期');return}var it=u[idx];if(Date.now()-it.ts>300000){toast('⏰ 已超过5分钟，无法撤回');localStorage.setItem('liayi_undo_items',JSON.stringify(u.filter(function(x){return x.undoId!==undoId})));return}try{await sbPost('inventory',{name:it.name,qty:it.qty,loc:it.loc,created_at:it.created_at||new Date().toISOString()})}catch(e){}localStorage.setItem('liayi_undo_items',JSON.stringify(u.filter(function(x){return x.undoId!==undoId})));await refreshDB();addLog('↩️ 撤回删除 ['+it.name+'，'+it.qty+'，'+it.loc+']','撤回');renderLogs();render();toast('↩️ 已撤回 '+it.name)}
 function showLocPicker(id,cur){
   var it=DB.inventory.find(function(s){return s.id===id});var nm=it?it.name:'未知';
   var opts=DB.locations.map(function(l){
@@ -320,7 +320,7 @@ function showAddInv(n,q,l,id){
    DB=getDB();
    if(isE){var f=DB.inventory.find(function(s){return s.id===id});if(f){f.name=nm;f.qty=qt;f.loc=lc}addLog('编辑 ['+nm+'，'+qt+'，'+lc+']','编辑')}else{
       var existing=DB.inventory.filter(function(s){return s.loc===lc&&(s.name===nm||(s.name.length>nm.length&&s.name.indexOf(nm)===0&&/^\d+$/.test(s.name.substring(nm.length))))});if(existing.length>0){var base=nm;var maxIdx=1;existing.forEach(function(s){var sfx=s.name.substring(base.length);if(sfx){var n=parseInt(sfx,10);if(n>maxIdx)maxIdx=n}});nm=base+(maxIdx+1)}}
-    try{await sbPost('inventory',{name:nm,qty:qt,loc:lc})}catch(e){}
+    try{await sbPost('inventory',{name:nm,qty:qt,loc:lc,created_at:new Date().toISOString()})}catch(e){}
     await refreshDB();addLog('添加 ['+nm+'，'+qt+'，'+lc+']','添加');hideModal();render()})}
 
 async function delInv(id,recordItem){
@@ -479,7 +479,7 @@ async function execAI(res,lastInput){
   if(res.action==='ask_qty'){toast('❓ '+(res.prompt||'请告诉我数量'));addLog('❓ AI: '+(res.prompt||'请告诉我数量'),'AI');if(lastInput){pendingContext={userMsg:lastInput,aiReply:res.prompt||'请告诉我数量'}}return}
   if(res.action==='new_location'){pendingNewLoc=res.loc;nT.textContent='检测到新位置「'+res.loc+'」，是否添加？';nC.classList.add('show');addLog('📍 检测到新位置 '+res.loc,'AI');return}
   DB=getDB();var a=res.action,desc=res.desc;
-if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){return s.name===res.item&&s.loc===lc});if(dup){var newName=nextItemName(res.item);DB.inventory.push({id:DB.nextInvId++,name:newName,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 ['+newName+'，'+res.qty+'，'+lc+']','AI')}else{DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 ['+res.item+'，'+res.qty+'，'+lc+']','AI')}await sbPost('inventory',{name:newName||res.item,qty:res.qty,loc:lc});await refreshDB();render();toast('✅ '+desc);return}
+if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){return s.name===res.item&&s.loc===lc});if(dup){var newName=nextItemName(res.item);DB.inventory.push({id:DB.nextInvId++,name:newName,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 ['+newName+'，'+res.qty+'，'+lc+']','AI')}else{DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 ['+res.item+'，'+res.qty+'，'+lc+']','AI')}await sbPost('inventory',{name:newName||res.item,qty:res.qty,loc:lc,created_at:new Date().toISOString()});await refreshDB();render();toast('✅ '+desc);return}
   if(a==='use_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}var sq=f.qty.match(/^(\d+(?:\.\d+)?)(.*)/);var mq=res.qty?res.qty.match(/^(\d+(?:\.\d+)?)(.*)/):null;if(!mq){try{await sbDelete('inventory','id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('🗑️ 消耗完毕 '+desc);addLog('🗑️ 消耗完毕 '+res.item,'AI');return}if(sq&&(sq[2]===mq[2]||!mq[2])){var n=parseFloat(sq[1])-parseFloat(mq[1]);if(n<=0){try{await sbDelete('inventory','id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('🗑️ 消耗完毕 '+desc);addLog('🗑️ 消耗完毕 '+res.item,'AI')}else{try{await sbPatch('inventory',{qty:n+sq[2]},'id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('✅ '+desc);addLog('✅ '+desc,'AI')}}else{toast('⚠️ 单位不一致，未消耗');addLog('⚠️ 单位不一致，未能消耗 '+res.item,'AI')}return}
   if(a==='set_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}try{await sbPatch('inventory',{qty:res.qty},'id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
   if(a==='delete_stock'){DB=getDB();var items=DB.inventory.filter(function(s){return s.name===res.name});if(items.length===0){toast('❌ 没有 '+res.name);addLog('❌ 未找到 '+res.name,'AI');return}items.forEach(function(it){saveUndoItem({name:it.name,qty:it.qty,loc:it.loc,created_at:it.created_at||it.createdAt,ts:Date.now()})});try{await sbDelete('inventory','name=eq.'+encodeURIComponent(res.name))}catch(e){}await refreshDB();render();toast('🗑️ '+desc);addLog('🗑️ '+desc,'AI');return}
@@ -657,6 +657,8 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
+
 
 
 
