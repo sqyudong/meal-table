@@ -138,7 +138,7 @@ td.loc{font-size:12px;color:#888}
 <div id="appMain" style="display:none">
 <div class="app-header">
   <div class="top-row">
-    <span id="versionDisplay" style="font-size:11px;color:rgba(255,255,255,0.7);white-space:nowrap">V1.0.1</span> <span id="syncStatus" style="font-size:10px;color:rgba(255,255,221,0.8);margin-left:4px">☁</span>
+    <span id="versionDisplay" style="font-size:11px;color:rgba(255,255,255,0.7);white-space:nowrap">V1.0.1</span> 
     <div><h1>李阿姨小饭桌</h1><div class="slogan">健康营养美食</div></div>
     <div class="staff-badge" id="staffBadge" title="双击管理账号">
       <span id="roleIcon"></span>
@@ -200,26 +200,31 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.7';
-var INV_VERSION_KEY = 'inv_ver';
+var APP_VERSION = 'V1.0.8';
+var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
+function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
+function sbPost(t,d){return fetch(SUPABASE_URL+'/rest/v1/'+t,{method:'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(d)})}
+function sbDelete(t,f){return fetch(SUPABASE_URL+'/rest/v1/'+t+'?'+f,{method:'DELETE',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}})}
+function sbPatch(t,d,f){return fetch(SUPABASE_URL+'/rest/v1/'+t+'?'+f,{method:'PATCH',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(d)})}
+async function refreshDB(){try{var a=await sbGet('accounts');var i=await sbGet('inventory','select=*&order=id.asc');var r=await sbGet('recipes','select=*&order=id.asc');var l=await sbGet('logs','select=*&order=id.desc&limit=20');var o=await sbGet('locations','select=*&order=id.asc');DB={accounts:a||[],inventory:i||[],recipes:r||[],logs:l||[],locations:(o||[]).map(function(x){return x.name}),nextInvId:9999,nextRecipeId:9999};return true}catch(e){console.error('Supabase load error',e);return false}}
+
+
 var SAVED_ACCOUNTS_KEY = 'liayi_saved_accounts';
-// Data sourced from data.json (GitHub)
-function setSync(s){var e=document.getElementById("syncStatus");if(e)e.textContent=s}
-var GITHUB_TOKEN = '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';
-var GITHUB_REPO = 'sqyudong/meal-table';
-var GITHUB_FILE = 'data.json';
-var DATA_SHA = null;
 
 
-function fetchCloudData(){return fetch('https://raw.githubusercontent.com/sqyudong/meal-table/main/data.json').then(function(r){if(!r.ok)throw new Error();return r.json()})}function getSha(){return fetch('https://api.github.com/repos/'+GITHUB_REPO+'/contents/'+GITHUB_FILE,{headers:{'Authorization':'Bearer '+GITHUB_TOKEN}}).then(function(r){return r.json()}).then(function(d){DATA_SHA=d.sha})}
-function pushCloudData(d){var p=DATA_SHA?Promise.resolve():getSha();return p.then(function(){if(!DATA_SHA)return getSha()}).then(function(){var c=btoa(unescape(encodeURIComponent(JSON.stringify(d))));return fetch('https://api.github.com/repos/'+GITHUB_REPO+'/contents/'+GITHUB_FILE,{method:'PUT',headers:{'Authorization':'Bearer '+GITHUB_TOKEN,'Content-Type':'application/json'},body:JSON.stringify({message:'sync data',content:c,sha:DATA_SHA})})}).then(function(r){return r.json()}).then(function(r){if(r.content)DATA_SHA=r.content.sha})}
+
+
+
+
+
 function loadData(){
   try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes){return d}}catch(e){}setTimeout(function(){alert('\u26a0\ufe0f \u65e0\u6cd5\u52a0\u8f7d\u6570\u636e\uff1a\u4e91\u7aef\u548c\u672c\u5730\u90fd\u6ca1\u6709\u6570\u636e')},500);var d={accounts:[{username:'admin',password:'admin',role:'admin',name:'管理员'}],locations:[],inventory:[],recipes:[],logs:[],nextInvId:1,nextRecipeId:1};
   localStorage.setItem(DB_KEY,JSON.stringify(d));return d}
-var _lastInvJSON='';function saveData(d){var ij=JSON.stringify(d.inventory);if(ij!==_lastInvJSON&&_lastInvJSON!==''){var iv=parseInt(localStorage.getItem(INV_VERSION_KEY)||'0')+1;localStorage.setItem(INV_VERSION_KEY,iv)}_lastInvJSON=ij;d.lastUpdated=d.lastUpdated||Date.now();localStorage.setItem(DB_KEY,JSON.stringify(d));setSync('☁');pushCloudData(d).then(function(){setSync("✔")}).catch(function(){setSync("✖")})}
+function saveData(d){d.lastUpdated=d.lastUpdated||Date.now();localStorage.setItem(DB_KEY,JSON.stringify(d))}
 function getDB(){return loadData()}
 
-var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false,pendingContext=null,cloudDataLoaded=false;
+var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false,pendingContext=null;
 var iB=document.getElementById('invBody'),rB=document.getElementById('recipeBody'),iC=document.getElementById('invCount'),rC=document.getElementById('recipeCount');
 var sD=document.getElementById('statusDot'),sT=document.getElementById('statusText'),vC=document.getElementById('voiceCard'),rT=document.getElementById('recogText'),aR=document.getElementById('analysisResult');
 var lL=document.getElementById('logList'),mB=document.getElementById('micBtn'),fL=document.getElementById('fabLabel'),tE=document.getElementById('toast'),tTimer=null;
@@ -227,15 +232,11 @@ var mO=document.getElementById('modalOverlay'),mC=document.getElementById('modal
 
 function toast(m){tE.textContent=m;tE.classList.add('show');clearTimeout(tTimer);tTimer=setTimeout(function(){tE.classList.remove('show')},2500)}
 function setStatus(mo,t){sD.className='status-dot '+mo;sT.textContent=t}
-function addLog(msg,tp){
-  var e=lL.querySelector('.empty-msg');if(e)e.remove();
-  var d=document.createElement('div');d.className='log-item';
+async function addLog(msg,tp){
   var n=new Date(),ti=String(n.getHours()).padStart(2,'0')+':'+String(n.getMinutes()).padStart(2,'0')+':'+String(n.getSeconds()).padStart(2,'0');
   var un=(currentUser&&currentUser.name)?currentUser.name:'系统';
-  var tag=tp?'<span class="op-tag">['+tp+']</span>':'';
-  d.innerHTML='<span class="time">'+ti+'</span><span class="user">'+un+'</span>'+tag+'<span class="msg">'+msg+'</span>';
-  
-  DB.logs.unshift({time:ti,ts:Date.now(),msg:msg,op:tp||'',user:un});if(DB.logs.length>20)DB.logs.splice(0,DB.logs.length-20);saveData(DB)}
+  try{await sbPost("logs",{time:ti,ts:Date.now(),msg:msg,op:tp||"",user:un})}catch(e){}
+  await refreshDB();renderLogs()}
 function fmtDur(c){
   var d=Date.now()-c,h=Math.floor(d/3600000),da=Math.floor(h/24);
   if(h<1)return'刚刚';if(h<24)return h+'小时';return h+'小时 ('+da+'天)'}
@@ -271,7 +272,7 @@ function render(){
   var sel=document.getElementById('locFilter'),cv=sel.value;
   sel.innerHTML='<option value="">📍 全部位置</option>';
   DB.locations.forEach(function(l){var o=document.createElement('option');o.value=l;o.textContent=l;if(l===cv)o.selected=true;sel.appendChild(o)});
-  setTimeout(function(){DB.inventory.forEach(function(s){delete s._new});DB.recipes.forEach(function(r){delete r._new})},600);var _iv=parseInt(localStorage.getItem(INV_VERSION_KEY)||'0');document.getElementById('invVersionBadge').textContent='N'+_iv;document.getElementById('versionDisplay').textContent=APP_VERSION}
+  setTimeout(function(){DB.inventory.forEach(function(s){delete s._new});DB.recipes.forEach(function(r){delete r._new})},600);document.getElementById('versionDisplay').textContent=APP_VERSION}
 
 function showModal(html){mC.innerHTML=html;mO.classList.add('show')}
 function hideModal(){mO.classList.remove('show')}
@@ -280,34 +281,36 @@ mO.addEventListener('click',function(e){if(e.target===mO)hideModal()})
 function showAddInv(n,q,l,id){
   var isE=!!id,locs=DB.locations.map(function(x){return'<option value="'+x+'"'+(x===l?'selected':'')+'>'+x+'</option>'}).join('');
   showModal('<h3>'+(isE?'编辑食材':'添加食材')+'</h3><div class="form-group"><label>食材名称</label><input id="mIn" value="'+(n||'')+'" placeholder="如：胡萝卜"></div><div class="form-group"><label>数量</label><input id="mIq" value="'+(q||'')+'" placeholder="如：2斤、5个"></div><div class="form-group"><label>位置</label><select id="mIl">'+locs+'</select></div><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="mIc">'+(isE?'保存':'添加')+'</button></div>');
-  document.getElementById('mIc').addEventListener('click',function(){
+  document.getElementById('mIc').addEventListener('click',async function(){
     var nm=document.getElementById('mIn').value.trim(),qt=document.getElementById('mIq').value.trim(),lc=document.getElementById('mIl').value;
     if(!nm||!qt){toast('⚠️ 请填写食材和数量');return}
    DB=getDB();
    if(isE){var f=DB.inventory.find(function(s){return s.id===id});if(f){f.name=nm;f.qty=qt;f.loc=lc}addLog('编辑 '+nm+' '+qt+'('+lc+')','编辑')}else{
       var existing=DB.inventory.filter(function(s){return s.loc===lc&&(s.name===nm||(s.name.length>nm.length&&s.name.indexOf(nm)===0&&/^\d+$/.test(s.name.substring(nm.length))))});if(existing.length>0){var base=nm;var maxIdx=1;existing.forEach(function(s){var sfx=s.name.substring(base.length);if(sfx){var n=parseInt(sfx,10);if(n>maxIdx)maxIdx=n}});nm=base+(maxIdx+1)}}
-    DB.inventory.push({id:DB.nextInvId++,name:nm,qty:qt,loc:lc,createdAt:Date.now(),_new:true});addLog('添加 '+nm+' '+qt+'('+lc+')','添加')
-    saveData(DB);hideModal();render()})}
+    try{await sbPost('inventory',{name:nm,qty:qt,loc:lc})}catch(e){}
+    await refreshDB();addLog('添加 '+nm+' '+qt+'('+lc+')','添加');hideModal();render()})()}
 
-function delInv(id){
+async function delInv(id){
   DB=getDB();var idx=DB.inventory.findIndex(function(s){return s.id===id});
-  if(idx===-1)return;var nm=DB.inventory[idx].name;DB.inventory.splice(idx,1);saveData(DB);addLog('删除 '+nm,'删除');render();toast('🗑️ 已删除 '+nm)}
+  if(idx===-1)return;var nm=DB.inventory[idx].name;var qt=DB.inventory[idx].qty;try{await sbDelete('inventory','id=eq.'+id)}catch(e){}
+  await refreshDB();addLog('删除 '+nm+'('+qt+')','删除');render();toast('🗑️ 已删除 '+nm)}
 
 function showAddRecipe(n,i,id){
   var isE=!!id;
   showModal('<h3>'+(isE?'编辑菜谱':'新菜谱')+'</h3><div class="form-group"><label>菜名</label><input id="mRn" value="'+(n||'')+'" placeholder="如：西红柿炒蛋"></div><div class="form-group"><label>食材（逗号分隔）</label><input id="mRi" value="'+(i||'')+'" placeholder="如：西红柿2个,鸡蛋3个"></div><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="mRc">'+(isE?'保存':'添加')+'</button></div>');
-  document.getElementById('mRc').addEventListener('click',function(){
+  document.getElementById('mRc').addEventListener('click',async function(){
     var nm=document.getElementById('mRn').value.trim(),ig=document.getElementById('mRi').value.trim();
     if(!nm){toast('⚠️ 请填写菜名');return}
     DB=getDB();
     if(isE){var f=DB.recipes.find(function(r){return r.id===id});if(f){f.name=nm;f.ingredients=ig||'（待补充）'}addLog('编辑 '+nm,'编辑')}else{
       if(DB.recipes.find(function(r){return r.name===nm})){toast('⚠️ 菜谱 '+nm+' 已存在');return}
-      DB.recipes.push({id:DB.nextRecipeId++,name:nm,ingredients:ig||'（待补充）',_new:true});addLog('添加 '+nm,'添加')}
-    saveData(DB);hideModal();render()})}
+      try{await sbPost('recipes',{name:nm,ingredients:ig||'（待补充）'})}catch(e){}
+    await refreshDB();addLog('添加 '+nm,'添加');hideModal();render()})()}
 
-function delRecipe(id){
+async function delRecipe(id){
   DB=getDB();var idx=DB.recipes.findIndex(function(r){return r.id===id});
-  if(idx===-1)return;var nm=DB.recipes[idx].name;DB.recipes.splice(idx,1);saveData(DB);addLog('删除 '+nm,'删除');render();toast('🗑️ 已删除 '+nm)}
+  if(idx===-1)return;var nm=DB.recipes[idx].name;try{await sbDelete('recipes','id=eq.'+id)}catch(e){}
+  await refreshDB();addLog('删除 '+nm,'删除');render();toast('🗑️ 已删除 '+nm)}
 
 document.addEventListener('click',function(e){
   var t=e.target;
@@ -323,7 +326,7 @@ document.getElementById('showAllLogsBtn').addEventListener('click',function(){lo
 // Login
 function login(u,p){try{if(!u||!p){document.getElementById('loginError').textContent='⚠️ 请输入账号和密码';return}
   DB=getDB();var foundUser=DB.accounts.find(function(a){return a.username===u});
-  if(!foundUser){document.getElementById('loginError').textContent=cloudDataLoaded?'❌ 账号不存在':'⏳ 数据加载中，请15秒后重试';return}
+  if(!foundUser){document.getElementById('loginError').textContent='❌ 账号不存在';return}
   if(foundUser.password!==p){document.getElementById('loginError').textContent='🔑 密码错误';return}
   var f=foundUser;
   currentUser=f;isAdmin=f.role==='admin';
@@ -350,8 +353,8 @@ document.getElementById('staffBadge').addEventListener('dblclick',function(){
   showModal('<h3>👥 账号管理</h3>'+list+'<div class="modal-btns" style="margin-top:12px"><button class="btn-cancel" onclick="hideModal()">关闭</button><button class="btn-confirm" id="importExcelBtn" style="margin-right:4px">📥 导入Excel</button><button class="btn-confirm" id="showAddAccBtn">+ 添加操作员</button></div>');
   document.getElementById('showAddAccBtn').addEventListener('click',function(){
     showModal('<h3>添加操作员</h3><div class="form-group"><label>姓名</label><input id="nAN" placeholder="如：张三"></div><div class="form-group"><label>账号</label><input id="nAU" placeholder="英文+数字"></div><div class="form-group"><label>密码</label><input id="nAP" type="password"></div><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">返回</button><button class="btn-confirm" id="cAA">添加</button></div>');
-    document.getElementById('cAA').addEventListener('click',function(){var nm=document.getElementById('nAN').value.trim(),us=document.getElementById('nAU').value.trim(),pw=document.getElementById('nAP').value.trim();if(!nm||!us||!pw){toast('⚠️ 请完整填写');return}DB=getDB();if(DB.accounts.find(function(a){return a.username===us})){toast('⚠️ 账号已存在');return}DB.accounts.push({username:us,password:pw,role:'staff',name:nm});saveData(DB);addLog('添加 '+nm+'('+us+')','管理');toast('✅ 已添加');hideModal()})});
-  document.querySelectorAll('.del-account-btn').forEach(function(b){b.addEventListener('click',function(){var u=this.getAttribute('data-user');if(confirm('确定删除账号 '+u+' ？')){DB=getDB();DB.accounts=DB.accounts.filter(function(a){return a.username!==u});saveData(DB);addLog('删除账号 '+u,'管理');toast('🗑️ 已删除');hideModal()}})});
+    document.getElementById('cAA').addEventListener('click',async function(){var nm=document.getElementById('nAN').value.trim(),us=document.getElementById('nAU').value.trim(),pw=document.getElementById('nAP').value.trim();if(!nm||!us||!pw){toast('⚠️ 请完整填写');return}DB=getDB();if(DB.accounts.find(function(a){return a.username===us})){toast('⚠️ 账号已存在');return}try{await sbPost('accounts',{username:us,password:pw,role:'staff',name:nm})}catch(e){}await refreshDB();addLog('添加 '+nm+'('+us+')','管理');toast('✅ 已添加');hideModal()})});
+  document.querySelectorAll('.del-account-btn').forEach(function(b){b.addEventListener('click',async function(){var u=this.getAttribute('data-user');if(confirm('确定删除账号 '+u+' ？')){DB=getDB();try{await sbDelete('accounts','username=eq.'+encodeURIComponent(u))}catch(e){}await refreshDB();addLog('删除账号 '+u,'管理');toast('🗑️ 已删除');hideModal()}})});
 // Excel account import
 document.getElementById('importExcelBtn').addEventListener('click',function(){
   if(typeof XLSX==='undefined'){toast('⚠️ 正在加载Excel解析库，请稍后重试');return}
@@ -382,7 +385,7 @@ document.getElementById('importExcelBtn').addEventListener('click',function(){
             added++;
           }
         });
-        saveData(DB);
+        await refreshDB();
         hideModal();
         toast('✅ 已导入 '+added+' 个账号');
       }catch(ex){toast('❌ Excel解析失败: '+ex.message)}
@@ -426,18 +429,18 @@ function nextItemName(base){
   });
   return base+(maxIdx+1)}
 
-function execAI(res,lastInput){
+async function execAI(res,lastInput){
   if(res.action==='unknown'){toast(res.desc);addLog('❌ '+res.desc,'AI');return}
   if(res.action==='ask_qty'){toast('❓ '+(res.prompt||'请告诉我数量'));addLog('❓ AI: '+(res.prompt||'请告诉我数量'),'AI');if(lastInput){pendingContext={userMsg:lastInput,aiReply:res.prompt||'请告诉我数量'}}return}
   if(res.action==='new_location'){pendingNewLoc=res.loc;nT.textContent='检测到新位置「'+res.loc+'」，是否添加？';nC.classList.add('show');addLog('📍 检测到新位置 '+res.loc,'AI');return}
   DB=getDB();var a=res.action,desc=res.desc;
-if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){return s.name===res.item&&s.loc===lc});if(dup){var newName=nextItemName(res.item);DB.inventory.push({id:DB.nextInvId++,name:newName,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 '+newName+' '+res.qty+'('+lc+')','AI')}else{DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 '+res.item+' '+res.qty+'('+lc+')','AI')}saveData(DB);render();toast('✅ '+desc);return}
-  if(a==='use_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}var sq=f.qty.match(/^(\d+(?:\.\d+)?)(.*)/);var mq=res.qty.match(/^(\d+(?:\.\d+)?)(.*)/);if(sq&&mq&&sq[2]===mq[2]){var n=parseFloat(sq[1])-parseFloat(mq[1]);if(n<=0){DB.inventory=DB.inventory.filter(function(s){return s!==f});saveData(DB);render();toast('🗑️ 消耗完毕 '+desc);addLog('🗑️ 消耗完毕 '+res.item,'AI')}else{f.qty=n+sq[2];f.createdAt=Date.now();saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI')}}else{toast('⚠️ 单位不一致，未消耗');addLog('⚠️ 单位不一致，未能消耗 '+res.item,'AI')}return}
-  if(a==='set_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}f.qty=res.qty;f.createdAt=Date.now();saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
-  if(a==='delete_stock'){var idx=DB.inventory.findIndex(function(s){return s.name===res.name});if(idx===-1){toast('❌ 没有 '+res.name);addLog('❌ 未找到 '+res.name,'AI');return}DB.inventory.splice(idx,1);saveData(DB);render();toast('🗑️ '+desc);addLog('🗑️ '+desc,'AI');return}
+if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){return s.name===res.item&&s.loc===lc});if(dup){var newName=nextItemName(res.item);DB.inventory.push({id:DB.nextInvId++,name:newName,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 '+newName+' '+res.qty+'('+lc+')','AI')}else{DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 '+res.item+' '+res.qty+'('+lc+')','AI')}await sbPost('inventory',{name:newName||res.item,qty:res.qty,loc:lc});await refreshDB();render();toast('✅ '+desc);return}
+  if(a==='use_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}var sq=f.qty.match(/^(\d+(?:\.\d+)?)(.*)/);var mq=res.qty.match(/^(\d+(?:\.\d+)?)(.*)/);if(sq&&mq&&sq[2]===mq[2]){var n=parseFloat(sq[1])-parseFloat(mq[1]);if(n<=0){try{await sbDelete('inventory','id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('🗑️ 消耗完毕 '+desc);addLog('🗑️ 消耗完毕 '+res.item,'AI')}else{try{await sbPatch('inventory',{qty:n+sq[2]},'id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('✅ '+desc);addLog('✅ '+desc,'AI')}}else{toast('⚠️ 单位不一致，未消耗');addLog('⚠️ 单位不一致，未能消耗 '+res.item,'AI')}return}
+  if(a==='set_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}try{await sbPatch('inventory',{qty:res.qty},'id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
+  if(a==='delete_stock'){var idx=DB.inventory.findIndex(function(s){return s.name===res.name});if(idx===-1){toast('❌ 没有 '+res.name);addLog('❌ 未找到 '+res.name,'AI');return}try{await sbDelete('inventory','name=eq.'+encodeURIComponent(res.name))}catch(e){}await refreshDB();render();toast('🗑️ '+desc);addLog('🗑️ '+desc,'AI');return}
 if(a==='move_stock'){var src=DB.inventory.find(function(s){return s.name===res.item&&s.loc===res.from_loc});if(!src){toast('❌ 未找到');return}var moveQty=res.qty;var sq=src.qty.match(/^(\d+(?:\.\d+)?)(.*)/);var mq=moveQty.match(/^(\d+(?:\.\d+)?)(.*)/);if(sq&&mq&&sq[2]===mq[2]){var n=parseFloat(sq[1])-parseFloat(mq[1]);if(n<=0){DB.inventory=DB.inventory.filter(function(s){return s!==src})}else{src.qty=n+sq[2]}}var newItemName=nextItemName(res.item);DB.inventory.push({id:DB.nextInvId++,name:newItemName,qty:moveQty,loc:res.to_loc,createdAt:Date.now(),_new:true});saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
-  if(a==='add_recipe'){if(DB.recipes.find(function(r){return r.name===res.name})){toast('⚠️ 菜谱已存在');return}DB.recipes.push({id:DB.nextRecipeId++,name:res.name,ingredients:'（待补充）',_new:true});saveData(DB);render();toast('➕ '+desc);addLog('➕ '+desc,'AI');return}
-  if(a==='recipe_ingredients'){var f=DB.recipes.find(function(r){return r.name===res.name});if(f)f.ingredients=res.ingredients;else DB.recipes.push({id:DB.nextRecipeId++,name:res.name,ingredients:res.ingredients,_new:true});saveData(DB);render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
+  if(a==='add_recipe'){if(DB.recipes.find(function(r){return r.name===res.name})){toast('⚠️ 菜谱已存在');return}try{await sbPost('recipes',{name:res.name,ingredients:'（待补充）'})}catch(e){}await refreshDB();render();toast('➕ '+desc);addLog('➕ '+desc,'AI');return}
+  if(a==='recipe_ingredients'){var f=DB.recipes.find(function(r){return r.name===res.name});if(f)try{if(f){await sbPatch('recipes',{ingredients:res.ingredients},'id=eq.'+f.id)}else{await sbPost('recipes',{name:res.name,ingredients:res.ingredients})}}catch(e){}await refreshDB();render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
   if(a==='query'){var matches=DB.inventory.filter(function(s){return s.name.indexOf(res.name)!==-1});if(matches.length>0){var brief=matches.map(function(s){return s.name+' '+s.qty+'('+s.loc+')'}).join(', ');toast('🔍 '+matches.length+' 项');addLog('🔍 '+res.name+' '+matches.length+' 项: '+brief, 'AI')}else{toast('🔍 '+res.name);addLog('🔍 '+res.name, 'AI')}return}
 }
 // Voice Recognition
@@ -476,8 +479,8 @@ try{var r=await aiAnalyze(finalTranscript,pendingContext);pendingContext=null;va
 mB.addEventListener('click',function(){if(isListening)stopListening(false);else startListening()});
 
 // New Location Confirm
-document.getElementById('newLocYes').addEventListener('click',function(){
-  if(pendingNewLoc){DB=getDB();if(!DB.locations.includes(pendingNewLoc)){DB.locations.push(pendingNewLoc);saveData(DB);addLog('📍 添加新位置 '+pendingNewLoc,'管理')}toast('✅ 已添加位置 '+pendingNewLoc)}
+document.getElementById('newLocYes').addEventListener('click',async function(){
+  if(pendingNewLoc){DB=getDB();if(!DB.locations.includes(pendingNewLoc)){try{await sbPost('locations',{name:pendingNewLoc})}catch(e){}await refreshDB();addLog('📍 添加新位置 '+pendingNewLoc,'管理')}toast('✅ 已添加位置 '+pendingNewLoc)}
   nC.classList.remove('show');pendingNewLoc=null;render()});
 document.getElementById('newLocNo').addEventListener('click',function(){nC.classList.remove('show');pendingNewLoc=null});
 
@@ -531,19 +534,16 @@ function renderLogs(){
     lL.appendChild(d)})
 }
 // Hook renderLogs
-var originalAddLog = addLog;
-addLog = function(msg,tp){
-  originalAddLog(msg,tp);
-  renderLogs();
-};
+// addLog now async - renderLogs called inside
 // Auto-login: 10 minutes
-var autoTime=localStorage.getItem('auto_login_time');var autoUser=localStorage.getItem('auto_login_user');var autoPass=localStorage.getItem('auto_login_pass');if(autoTime&&autoUser&&autoPass&&(Date.now()-parseInt(autoTime)<600000)){login(autoUser,autoPass)}else{
-// Init
-renderLogs();
-render();
-setStatus('idle','就绪，点击 🎤 开始语音输入');
-}
-fetchCloudData().then(function(cd){var ld=getDB();if(ld&&ld.lastUpdated&&(!cd.lastUpdated||ld.lastUpdated>cd.lastUpdated)){pushCloudData(ld)}else{localStorage.setItem(DB_KEY,JSON.stringify(cd))}DB=getDB();cloudDataLoaded=true;if(currentUser){renderLogs();render()}}).catch(function(){setSync("✖")})
+refreshDB().then(function(){
+  var autoTime=localStorage.getItem('auto_login_time');var autoUser=localStorage.getItem('auto_login_user');var autoPass=localStorage.getItem('auto_login_pass');
+  if(autoTime&&autoUser&&autoPass&&(Date.now()-parseInt(autoTime)<600000)){
+    login(autoUser,autoPass)
+  }else{
+    renderLogs();render();setStatus('idle','就绪，点击 🎤 开始语音输入');
+  }
+}).catch(function(e){console.error("init error",e)})
 
 /// ========== FIREBASE INTEGRATION (OPTIONAL) ==========
 /// To enable cloud sync across devices:
@@ -551,7 +551,6 @@ fetchCloudData().then(function(cd){var ld=getDB();if(ld&&ld.lastUpdated&&(!cd.la
 /// 2. Enable Authentication (Email/Password) and Firestore Database
 /// 3. Replace the config below with your Firebase project config
 /// 4. Uncomment the Firebase init and sync code below
-/// 5. Deploy to any static hosting (GitHub Pages, Vercel, Netlify, etc.)
 
 /*
 // Uncomment the next 2 lines in index.html <head> to load Firebase SDK
@@ -608,6 +607,8 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
+
 
 
 
