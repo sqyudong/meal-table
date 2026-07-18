@@ -209,14 +209,14 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.19';
+var APP_VERSION = 'V1.0.20';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
 function sbPost(t,d){return fetch(SUPABASE_URL+'/rest/v1/'+t,{method:'POST',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(d)})}
 function sbDelete(t,f){return fetch(SUPABASE_URL+'/rest/v1/'+t+'?'+f,{method:'DELETE',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY}})}
 function sbPatch(t,d,f){return fetch(SUPABASE_URL+'/rest/v1/'+t+'?'+f,{method:'PATCH',headers:{'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY,'Content-Type':'application/json'},body:JSON.stringify(d)})}
-async function refreshDB(){try{var a=await sbGet('accounts');var i=await sbGet('inventory','select=*&order=id.asc');var r=await sbGet('recipes','select=*&order=id.asc');var l=await sbGet('logs','select=*&order=id.desc&limit=20');var o=await sbGet('locations','select=*&order=id.asc');DB={accounts:a||[],inventory:i||[],recipes:r||[],logs:l||[],locations:(o||[]).map(function(x){return x.name}),nextInvId:9999,nextRecipeId:9999};return true}catch(e){console.error('Supabase load error',e);return false}}
+async function refreshDB(){try{var a=await sbGet('accounts');var i=await sbGet('inventory','select=*&order=id.asc');var r=await sbGet('recipes','select=*&order=id.asc');var l=await sbGet('logs','select=*&order=id.desc&limit=20');var o=await sbGet('locations','select=*&order=id.asc');DB={accounts:a||[],inventory:i||[],recipes:r||[],logs:l||[],locations:(o||[]).map(function(x){return x.name}),nextInvId:9999,nextRecipeId:9999};if(DB.locations.indexOf('常温')===-1)DB.locations.unshift('常温');return true}catch(e){console.error('Supabase load error',e);return false}}
 
 
 var SAVED_ACCOUNTS_KEY = 'liayi_saved_accounts';
@@ -228,7 +228,7 @@ var SAVED_ACCOUNTS_KEY = 'liayi_saved_accounts';
 
 
 function loadData(){
-  try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes){return d}}catch(e){}setTimeout(function(){alert('\u26a0\ufe0f \u65e0\u6cd5\u52a0\u8f7d\u6570\u636e\uff1a\u4e91\u7aef\u548c\u672c\u5730\u90fd\u6ca1\u6709\u6570\u636e')},500);var d={accounts:[{username:'admin',password:'admin',role:'admin',name:'管理员'}],locations:[],inventory:[],recipes:[],logs:[],nextInvId:1,nextRecipeId:1};
+  try{var d=JSON.parse(localStorage.getItem(DB_KEY));if(d&&d.inventory&&d.recipes){return d}}catch(e){}setTimeout(function(){alert('\u26a0\ufe0f \u65e0\u6cd5\u52a0\u8f7d\u6570\u636e\uff1a\u4e91\u7aef\u548c\u672c\u5730\u90fd\u6ca1\u6709\u6570\u636e')},500);var d={accounts:[{username:'admin',password:'admin',role:'admin',name:'管理员'}],locations:['常温'],inventory:[],recipes:[],logs:[],nextInvId:1,nextRecipeId:1};
   localStorage.setItem(DB_KEY,JSON.stringify(d));return d}
 function saveData(d){d.lastUpdated=d.lastUpdated||Date.now();localStorage.setItem(DB_KEY,JSON.stringify(d))}
 function getDB(){return DB||loadData()}
@@ -657,6 +657,8 @@ login = function(u, p) {
 </script>
 </body>
 </html>
+
+
 
 
 
