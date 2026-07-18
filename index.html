@@ -167,10 +167,9 @@ td.loc{font-size:12px;color:#888}
   <div class="section-title">🏪 仓库 <span class="badge" id="invCount">0 项</span> <span class="badge" id="invVersionBadge">N0</span></div>
   <div class="toolbar">
     <select id="locFilter"><option value="">📍 全部位置</option></select>
-    <button id="sortDurationBtn">⏱️ 按时长排序</button>
     <button id="addInvBtn" class="btn-primary">+ 添加食材</button>
   </div>
-  <div class="table-wrap"><table><thead><tr><th>序号</th><th>食材</th><th>数量</th><th>入库时长</th><th>位置</th><th></th></tr></thead><tbody id="invBody"></tbody></table></div>
+  <div class="table-wrap"><table><thead><tr><th data-sort="id">序号 <span class="sort-i" style="font-size:11px;color:#e85d04">↑</span></th><th data-sort="name">食材 <span class="sort-i" style="font-size:11px;color:#e85d04"></span></th><th data-sort="qty">数量 <span class="sort-i" style="font-size:11px;color:#e85d04"></span></th><th data-sort="duration">入库时长 <span class="sort-i" style="font-size:11px;color:#e85d04"></span></th><th data-sort="loc">位置 <span class="sort-i" style="font-size:11px;color:#e85d04"></span></th><th></th></tr></thead><tbody id="invBody"></tbody></table></div>
 </div>
 <div class="section" id="tabRecipe" style="display:none">
   <div class="section-title">📖 菜谱 <span class="badge" id="recipeCount">0 道</span></div>
@@ -209,7 +208,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.25';
+var APP_VERSION = 'V1.0.26';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -233,7 +232,7 @@ function loadData(){
 function saveData(d){d.lastUpdated=d.lastUpdated||Date.now();localStorage.setItem(DB_KEY,JSON.stringify(d))}
 function getDB(){return DB||loadData()}
 
-var DB=getDB(),currentUser=null,isAdmin=false,sortAsc=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false,pendingContext=null;
+var DB=getDB(),currentUser=null,isAdmin=false,sortMode="id",sortAsc=true,showAllInv=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false,pendingContext=null;
 var iB=document.getElementById('invBody'),rB=document.getElementById('recipeBody'),iC=document.getElementById('invCount'),rC=document.getElementById('recipeCount');
 var sD=document.getElementById('statusDot'),sT=document.getElementById('statusText'),vC=document.getElementById('voiceCard'),rT=document.getElementById('recogText'),aR=document.getElementById('analysisResult');
 var lL=document.getElementById('logList'),mB=document.getElementById('micBtn'),fL=document.getElementById('fabLabel'),tE=document.getElementById('toast'),tTimer=null;
@@ -270,17 +269,19 @@ function render(){
   DB=getDB();
   var items=DB.inventory.slice();
   if(locFilter)items=items.filter(function(s){return s.loc===locFilter});
-  if(sortAsc)items.sort(function(a,b){return(b.created_at||0)-(a.created_at||0)});
+  items.sort(function(a,b){var c=0;switch(sortMode){case"id":c=a.id-b.id;break;case"name":c=(a.name||"").localeCompare(b.name||"","zh");break;case"qty":c=(parseFloat(a.qty)||0)-(parseFloat(b.qty)||0);break;case"duration":var ta=typeof a.created_at==="number"?a.created_at:Date.parse(/Z$/.test(a.created_at||"")?a.created_at:a.created_at+"Z")||0,tb=typeof b.created_at==="number"?b.created_at:Date.parse(/Z$/.test(b.created_at||"")?b.created_at:b.created_at+"Z")||0;c=ta-tb;break;case"loc":c=(DB.locations.indexOf(a.loc)>=0?DB.locations.indexOf(a.loc):999)-(DB.locations.indexOf(b.loc)>=0?DB.locations.indexOf(b.loc):999);break}return sortAsc?c:-c});
+  document.querySelectorAll(".sort-i").forEach(function(e){e.textContent=""});var sact=document.querySelector("th[data-sort='"+sortMode+"'] .sort-i");if(sact)sact.textContent=sortAsc?"↑":"↓";
   iB.innerHTML='';
   if(items.length===0){iB.innerHTML='<tr><td colspan="6" class="empty-msg">暂无食材</td></tr>'}else{
-    items.forEach(function(s,i){
+    var shownItems=!showAllInv?items.slice(0,6):items;
+    shownItems.forEach(function(s,i){
       var tr=document.createElement('tr');
       var d=fmtDur(s.created_at||Date.now()),ex=expCls(s.loc,s.created_at||Date.now());
       var wi=ex==='exp-warn-yellow'?'⚠️':(ex==='exp-warn-red'?'🚨':'');
       if(ex)tr.className=ex;if(s._new)tr.classList.add('fade-in');
       var cd=true;
       var nf=s.name+(getWarnings().includes(s.id)?'<span class=warn-icon title="部分食材已转移">❗</span>':'');tr.innerHTML='<td class="seq">'+(i+1)+'</td><td class="name">'+nf+'</td><td class="qty">'+s.qty+'</td><td>'+wi+' '+d+'</td><td><span class="loc-clickable" data-id="'+s.id+'">'+s.loc+'</span></td>'+(cd?'<td><button class="del-btn" data-id="'+s.id+'" data-type="inv">✕</button></td>':'<td></td>');
-      iB.appendChild(tr)})}
+      iB.appendChild(tr)});if(items.length>6&&!showAllInv){var er=document.createElement('tr');er.innerHTML='<td colspan="6" style="text-align:center;padding:10px"><button id="expandInvBtn" style="background:none;border:1px solid #e85d04;color:#e85d04;border-radius:8px;padding:6px 20px;font-size:13px;cursor:pointer">展开全部 ('+items.length+' 项)</button></td>';iB.appendChild(er);document.getElementById('expandInvBtn').onclick=function(){showAllInv=true;render()}}}
   iC.textContent=DB.inventory.length+' 项';
   rB.innerHTML='';
   if(DB.recipes.length===0){rB.innerHTML='<tr><td colspan="3" class="empty-msg">暂无菜谱</td></tr>'}else{
@@ -357,7 +358,8 @@ document.addEventListener('click',function(e){
   if(t.classList.contains('del-btn')&&t.getAttribute('data-type')==='recipe'){var id=parseInt(t.getAttribute('data-id'));var rn=t.closest('tr').querySelector('.name').textContent;showModal('<h3>确认删除</h3><p style="margin:10px 0;font-size:14px;color:#666">"'+rn+'"</p><div class="modal-btns"><button class="btn-cancel" onclick="hideModal()">取消</button><button class="btn-confirm" id="confirmDelBtn">确认删除</button></div>');document.getElementById('confirmDelBtn').addEventListener('click',function(){hideModal();delRecipe(id)})}
   if(t.classList.contains('loc-clickable')){var id=parseInt(t.getAttribute('data-id'));showLocPicker(id,t.textContent.trim())}})
 document.getElementById('locFilter').addEventListener('change',function(){locFilter=this.value;render()});
-document.getElementById('sortDurationBtn').addEventListener('click',function(){sortAsc=!sortAsc;this.textContent=sortAsc?'⏱️ 最新在前':'⏱️ 按时长排序';render()});
+document.querySelector('#tabInv table thead').addEventListener('click',function(e){var th=e.target.closest('th');if(!th||!th.dataset.sort)return;var m=th.dataset.sort;if(m===sortMode)sortAsc=!sortAsc;else{sortMode=m;sortAsc=true}render()});
+
 document.getElementById('addInvBtn').addEventListener('click',function(){showAddInv()});
 document.getElementById('addRecipeBtn').addEventListener('click',function(){showAddRecipe()});
 document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){document.querySelectorAll('.tab').forEach(function(x){x.classList.remove('active')});b.classList.add('active');var t=b.getAttribute('data-tab');document.getElementById('tabInv').style.display=t==='inv'?'':'none';document.getElementById('tabRecipe').style.display=t==='recipe'?'':'none'})});
