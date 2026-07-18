@@ -305,7 +305,9 @@ function showAddRecipe(n,i,id){
     if(isE){var f=DB.recipes.find(function(r){return r.id===id});if(f){f.name=nm;f.ingredients=ig||'（待补充）'}addLog('编辑 '+nm,'编辑')}else{
       if(DB.recipes.find(function(r){return r.name===nm})){toast('⚠️ 菜谱 '+nm+' 已存在');return}
       try{await sbPost('recipes',{name:nm,ingredients:ig||'（待补充）'})}catch(e){}
-    await refreshDB();addLog('添加 '+nm,'添加');hideModal();render()})}
+    }
+    await refreshDB();addLog('添加 '+nm,'添加');hideModal();render()
+  })}
 
 async function delRecipe(id){
   DB=getDB();var idx=DB.recipes.findIndex(function(r){return r.id===id});
@@ -362,7 +364,7 @@ document.getElementById('importExcelBtn').addEventListener('click',function(){
   inp.onchange=function(e){
     var file=e.target.files[0];if(!file)return;
     var reader=new FileReader();
-    reader.onload=function(e){
+    reader.onload=async function(e){
       try{
         var data=new Uint8Array(e.target.result);
         var wb=XLSX.read(data,{type:'array'});
