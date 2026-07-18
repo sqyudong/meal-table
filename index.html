@@ -164,10 +164,9 @@ td.loc{font-size:12px;color:#888}
   <button class="tab" data-tab="recipe">📖 菜谱管理</button>
 </div>
 <div class="section" id="tabInv">
-  <div class="section-title">🏪 仓库 <span class="badge" id="invCount">0 项</span> <span class="badge" id="invVersionBadge">N0</span></div>
+  <div class="section-title">🏪 仓库 <select id="locFilter" style="margin-left:auto;font-size:12px;padding:3px 8px;border-radius:6px;border:1px solid #fef0e0;background:#fffaf3;color:#e85d04;outline:none;cursor:pointer"><option value="">📍 全部位置</option></select></div>
   <div class="toolbar">
-    <select id="locFilter"><option value="">📍 全部位置</option></select>
-    <button id="addInvBtn" class="btn-primary">+ 添加食材</button>
+    <button id="addInvBtn" class="btn-primary" style="margin-left:auto">+ 添加食材</button>
   </div>
   <div class="table-wrap"><table><thead><tr><th data-sort="id">序号 <span class="sort-i" style="font-size:11px;color:#e85d04">↑</span></th><th data-sort="name">食材 <span class="sort-i" style="font-size:11px;color:#e85d04"></span></th><th data-sort="qty">数量 <span class="sort-i" style="font-size:11px;color:#e85d04"></span></th><th data-sort="duration">入库时长 <span class="sort-i" style="font-size:11px;color:#e85d04"></span></th><th data-sort="loc">位置 <span class="sort-i" style="font-size:11px;color:#e85d04"></span></th><th></th></tr></thead><tbody id="invBody"></tbody></table></div>
 </div>
@@ -208,7 +207,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.26';
+var APP_VERSION = 'V1.0.27';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -233,7 +232,7 @@ function saveData(d){d.lastUpdated=d.lastUpdated||Date.now();localStorage.setIte
 function getDB(){return DB||loadData()}
 
 var DB=getDB(),currentUser=null,isAdmin=false,sortMode="id",sortAsc=true,showAllInv=false,locFilter='',isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false,pendingContext=null;
-var iB=document.getElementById('invBody'),rB=document.getElementById('recipeBody'),iC=document.getElementById('invCount'),rC=document.getElementById('recipeCount');
+var iB=document.getElementById('invBody'),rB=document.getElementById('recipeBody'),rC=document.getElementById('recipeCount');
 var sD=document.getElementById('statusDot'),sT=document.getElementById('statusText'),vC=document.getElementById('voiceCard'),rT=document.getElementById('recogText'),aR=document.getElementById('analysisResult');
 var lL=document.getElementById('logList'),mB=document.getElementById('micBtn'),fL=document.getElementById('fabLabel'),tE=document.getElementById('toast'),tTimer=null;
 var mO=document.getElementById('modalOverlay'),mC=document.getElementById('modalContent'),nC=document.getElementById('newLocConfirm'),nT=document.getElementById('newLocText');
@@ -282,7 +281,6 @@ function render(){
       var cd=true;
       var nf=s.name+(getWarnings().includes(s.id)?'<span class=warn-icon title="部分食材已转移">❗</span>':'');tr.innerHTML='<td class="seq">'+(i+1)+'</td><td class="name">'+nf+'</td><td class="qty">'+s.qty+'</td><td>'+wi+' '+d+'</td><td><span class="loc-clickable" data-id="'+s.id+'">'+s.loc+'</span></td>'+(cd?'<td><button class="del-btn" data-id="'+s.id+'" data-type="inv">✕</button></td>':'<td></td>');
       iB.appendChild(tr)});if(items.length>6&&!showAllInv){var er=document.createElement('tr');er.innerHTML='<td colspan="6" style="text-align:center;padding:10px"><button id="expandInvBtn" style="background:none;border:1px solid #e85d04;color:#e85d04;border-radius:8px;padding:6px 20px;font-size:13px;cursor:pointer">展开全部 ('+items.length+' 项)</button></td>';iB.appendChild(er);document.getElementById('expandInvBtn').onclick=function(){showAllInv=true;render()}}}
-  iC.textContent=DB.inventory.length+' 项';
   rB.innerHTML='';
   if(DB.recipes.length===0){rB.innerHTML='<tr><td colspan="3" class="empty-msg">暂无菜谱</td></tr>'}else{
     DB.recipes.forEach(function(r){
