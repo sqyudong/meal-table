@@ -206,7 +206,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.10';
+var APP_VERSION = 'V1.0.11';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
@@ -263,12 +263,12 @@ function render(){
   DB=getDB();
   var items=DB.inventory.slice();
   if(locFilter)items=items.filter(function(s){return s.loc===locFilter});
-  if(sortAsc)items.sort(function(a,b){return(b.createdAt||0)-(a.createdAt||0)});
+  if(sortAsc)items.sort(function(a,b){return(b.created_at||0)-(a.created_at||0)});
   iB.innerHTML='';
   if(items.length===0){iB.innerHTML='<tr><td colspan="6" class="empty-msg">暂无食材</td></tr>'}else{
     items.forEach(function(s,i){
       var tr=document.createElement('tr');
-      var d=fmtDur(s.createdAt||Date.now()),ex=expCls(s.loc,s.createdAt||Date.now());
+      var d=fmtDur(s.created_at||Date.now()),ex=expCls(s.loc,s.created_at||Date.now());
       var wi=ex==='exp-warn-yellow'?'⚠️':(ex==='exp-warn-red'?'🚨':'');
       if(ex)tr.className=ex;if(s._new)tr.classList.add('fade-in');
       var cd=true;
