@@ -165,10 +165,7 @@ td.loc{font-size:12px;color:#888}
   <button class="tab" data-tab="recipe">📖 菜谱管理</button>
 </div>
 <div class="section" id="tabInv">
-  <div class="section-title">🏪 仓库</div>
-  <div class="toolbar">
-    <button id="addInvBtn" class="btn-primary" style="margin-left:auto">+ 添加食材</button>
-  </div>
+  <div class="section-title" style="justify-content:space-between">🏪 仓库<button id="addInvBtn" class="btn-primary" style="font-size:12px;padding:5px 12px;border-radius:8px;border:none;background:linear-gradient(135deg,#e85d04,#dc2f02);color:#fff;font-weight:600;cursor:pointer">+ 添加食材</button></div>
   <div class="table-wrap"><table><thead><tr><th data-sort="id">序号 <span class="sort-i" style="font-size:11px;color:#e85d04">↑</span></th><th data-sort="name">食材 <span class="sort-i" style="font-size:11px;color:#e85d04"></span></th><th data-sort="qty">数量 <span class="sort-i" style="font-size:11px;color:#e85d04"></span></th><th data-sort="duration">入库时长 <span class="sort-i" style="font-size:11px;color:#e85d04"></span></th><th id="locFilterTh" style="cursor:pointer" title="点击筛选位置">位置</th><th></th></tr></thead><tbody id="invBody"></tbody></table></div>
 </div>
 <div class="section" id="tabRecipe" style="display:none">
@@ -208,7 +205,7 @@ td.loc{font-size:12px;color:#888}
 <script>
 // ========== DATA LAYER ==========
 var DB_KEY = 'liayi_pantry_data';
-var APP_VERSION = 'V1.0.28';
+var APP_VERSION = 'V1.0.29';
 var SUPABASE_URL = 'https://ndziepmmptcsrwiagdfa.supabase.co';
 var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5kemllcG1tcHRjc3J3aWFnZGZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzMTYwNzMsImV4cCI6MjA5OTg5MjA3M30.4PZqBreOxSCUsrV_7tY3_bjqH6EFKXMp0xK7z918uDs';
 function sbGet(t,q){var h={'apikey':SUPABASE_KEY,'Authorization':'Bearer '+SUPABASE_KEY};return fetch(SUPABASE_URL+'/rest/v1/'+t+(q?'?'+q:'?select=*'),{headers:h}).then(function(r){return r.json()})}
