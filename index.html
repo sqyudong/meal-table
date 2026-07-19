@@ -229,7 +229,7 @@ function loadData(){
 function saveData(d){d.lastUpdated=d.lastUpdated||Date.now();localStorage.setItem(DB_KEY,JSON.stringify(d))}
 function getDB(){return DB||loadData()}
 
-var DB=getDB(),currentUser=null,isAdmin=false,sortMode="id",sortAsc=true,showAllInv=false,locFilter=[],isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false,pendingContext=null;
+var DB=getDB(),currentUser=null,isAdmin=false,sortMode="id",sortAsc=true,showAllInv=false,locFilter=[],isListening=false,recognition=null,finalTranscript='',pendingNewLoc=null,userStoppedRecognition=false,pendingContext=null,silenceTimer=null,aiBusy=false;
 var iB=document.getElementById('invBody'),rB=document.getElementById('recipeBody'),rC=document.getElementById('recipeCount');
 var sD=document.getElementById('statusDot'),sT=document.getElementById('statusText'),vC=document.getElementById('voiceCard'),rT=document.getElementById('recogText'),aR=document.getElementById('analysisResult');
 var lL=document.getElementById('logList'),mB=document.getElementById('micBtn'),fL=document.getElementById('fabLabel'),tE=document.getElementById('toast'),tTimer=null;
@@ -242,8 +242,18 @@ async function addLog(msg,tp){
   var un=(currentUser&&currentUser.name)?currentUser.name:'系统';
   try{await sbPost("logs",{time:ti,ts:Date.now(),msg:msg,op:tp||"",user:un})}catch(e){}
   await refreshDB();renderLogs()}
+/* Parse timestamp: if has timezone (Z/+HH:MM/-HH:MM) parse directly, else treat as local time */
+function parseTime(c){
+  if(!c||typeof c!=='string')return NaN;
+  return Date.parse(/[Zz]|[+-]\d{2}:\d{2}$/.test(c)?c:c)
+}
+/* Return local time ISO string (no timezone suffix) for storing in DB */
+function nowLocalISO(){
+  var d=new Date(),p=function(n){return String(n).padStart(2,'0')};
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds())+'.'+String(d.getMilliseconds()).padStart(3,'0')
+}
 function fmtDur(c){
-  var t=typeof c==='number'?c:(typeof c==='string'?Date.parse(c.endsWith('Z')?c:c+'Z'):NaN);
+  var t=typeof c==='number'?c:(typeof c==='string'?parseTime(c):NaN);
   if(isNaN(t))t=Date.now();
   var d=Date.now()-t;
   var ms=Math.floor(d/1000);
@@ -256,7 +266,7 @@ function fmtDur(c){
   return da+'天';
 }
 function expCls(l,c){
-  var ts=typeof c==='number'?c:(typeof c==='string'?Date.parse(c.endsWith('Z')?c:c+'Z'):NaN);
+  var ts=typeof c==='number'?c:(typeof c==='string'?parseTime(c):NaN);
   if(isNaN(ts)||ts<=0)return'';
   var h=(Date.now()-ts)/3600000;
   if(l.indexOf('常温')!==-1){if(h>48)return('exp-warn-red');if(h>24)return('exp-warn-yellow')}
@@ -266,7 +276,7 @@ function render(){
   DB=getDB();
   var items=DB.inventory.slice();
   if(locFilter.length>0)items=items.filter(function(s){return locFilter.indexOf(s.loc)!==-1});
-  items.sort(function(a,b){var c=0;switch(sortMode){case"id":c=a.id-b.id;break;case"name":c=(a.name||"").localeCompare(b.name||"","zh");break;case"qty":c=(parseFloat(a.qty)||0)-(parseFloat(b.qty)||0);break;case"duration":var ta=typeof a.created_at==="number"?a.created_at:Date.parse(/Z$/.test(a.created_at||"")?a.created_at:a.created_at+"Z")||0,tb=typeof b.created_at==="number"?b.created_at:Date.parse(/Z$/.test(b.created_at||"")?b.created_at:b.created_at+"Z")||0;c=ta-tb;break}return sortAsc?c:-c});
+  items.sort(function(a,b){var c=0;switch(sortMode){case"id":c=a.id-b.id;break;case"name":c=(a.name||"").localeCompare(b.name||"","zh");break;case"qty":c=(parseFloat(a.qty)||0)-(parseFloat(b.qty)||0);break;case"duration":var ta=typeof a.created_at==="number"?a.created_at:Date.parse(/Z$/.test(a.created_at||0)?a.created_at:parseTime(a.created_at))||0,tb=typeof b.created_at==="number"?b.created_at:parseTime(b.created_at)||0;c=ta-tb;break}return sortAsc?c:-c});
   document.querySelectorAll(".sort-i").forEach(function(e){e.textContent=""});var sact=document.querySelector("th[data-sort='"+sortMode+"'] .sort-i");if(sact)sact.textContent=sortAsc?"↑":"↓";document.getElementById("locFilterTh").classList.toggle("loc-filter-active",locFilter.length>0);
   iB.innerHTML='';
   if(items.length===0){iB.innerHTML='<tr><td colspan="6" class="empty-msg">暂无食材</td></tr>'}else{
@@ -295,7 +305,7 @@ function hideModal(){mO.classList.remove('show')}
 mO.addEventListener('click',function(e){if(e.target===mO)hideModal()})
 function getUndoItems(){try{return JSON.parse(localStorage.getItem('liayi_undo_items'))||[]}catch(e){return[]}}
 function saveUndoItem(it){var u=getUndoItems();it.undoId=Date.now()+Math.random().toString(36).slice(2,8);u.push(it);localStorage.setItem('liayi_undo_items',JSON.stringify(u))}
-async function undoDelete(undoId){var u=getUndoItems();var idx=u.findIndex(function(x){return x.undoId===undoId});if(idx===-1){toast('❌ 撤回失败，数据已过期');return}var it=u[idx];if(Date.now()-it.ts>300000){toast('⏰ 已超过5分钟，无法撤回');localStorage.setItem('liayi_undo_items',JSON.stringify(u.filter(function(x){return x.undoId!==undoId})));return}try{await sbPost('inventory',{name:it.name,qty:it.qty,loc:it.loc,created_at:it.created_at||new Date().toISOString()})}catch(e){}localStorage.setItem('liayi_undo_items',JSON.stringify(u.filter(function(x){return x.undoId!==undoId})));await refreshDB();addLog('↩️ 撤回删除 ['+it.name+'，'+it.qty+'，'+it.loc+']','撤回');renderLogs();render();toast('↩️ 已撤回 '+it.name)}
+async function undoDelete(undoId){var u=getUndoItems();var idx=u.findIndex(function(x){return x.undoId===undoId});if(idx===-1){toast('❌ 撤回失败，数据已过期');return}var it=u[idx];if(Date.now()-it.ts>300000){toast('⏰ 已超过5分钟，无法撤回');localStorage.setItem('liayi_undo_items',JSON.stringify(u.filter(function(x){return x.undoId!==undoId})));return}try{await sbPost('inventory',{name:it.name,qty:it.qty,loc:it.loc,created_at:it.created_at||nowLocalISO()})}catch(e){}localStorage.setItem('liayi_undo_items',JSON.stringify(u.filter(function(x){return x.undoId!==undoId})));await refreshDB();addLog('↩️ 撤回删除 ['+it.name+'，'+it.qty+'，'+it.loc+']','撤回');renderLogs();render();toast('↩️ 已撤回 '+it.name)}
 function showLocPicker(id,cur){
   var it=DB.inventory.find(function(s){return s.id===id});var nm=it?it.name:'未知';
   var opts=DB.locations.map(function(l){
@@ -319,7 +329,7 @@ function showAddInv(n,q,l,id){
    DB=getDB();
    if(isE){var f=DB.inventory.find(function(s){return s.id===id});if(f){f.name=nm;f.qty=qt;f.loc=lc}addLog('编辑 ['+nm+'，'+qt+'，'+lc+']','编辑')}else{
       var existing=DB.inventory.filter(function(s){return s.loc===lc&&(s.name===nm||(s.name.length>nm.length&&s.name.indexOf(nm)===0&&/^\d+$/.test(s.name.substring(nm.length))))});if(existing.length>0){var base=nm;var maxIdx=1;existing.forEach(function(s){var sfx=s.name.substring(base.length);if(sfx){var n=parseInt(sfx,10);if(n>maxIdx)maxIdx=n}});nm=base+(maxIdx+1)}}
-    try{await sbPost('inventory',{name:nm,qty:qt,loc:lc,created_at:new Date().toISOString()})}catch(e){}
+    try{await sbPost('inventory',{name:nm,qty:qt,loc:lc,created_at:nowLocalISO()})}catch(e){}
     await refreshDB();addLog('添加 ['+nm+'，'+qt+'，'+lc+']','添加');hideModal();render()})}
 
 async function delInv(id,recordItem){
@@ -482,7 +492,7 @@ async function execAI(res,lastInput){
   if(res.action==='ask_qty'){toast('❓ '+(res.prompt||'请告诉我数量'));addLog('❓ AI: '+(res.prompt||'请告诉我数量'),'AI');if(lastInput){pendingContext={userMsg:lastInput,aiReply:res.prompt||'请告诉我数量'}}return}
   if(res.action==='new_location'){pendingNewLoc=res.loc;nT.textContent='检测到新位置「'+res.loc+'」，是否添加？';nC.classList.add('show');addLog('📍 检测到新位置 '+res.loc,'AI');return}
   DB=getDB();var a=res.action,desc=res.desc;
-if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){return s.name===res.item&&s.loc===lc});if(dup){var newName=nextItemName(res.item);DB.inventory.push({id:DB.nextInvId++,name:newName,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 ['+newName+'，'+res.qty+'，'+lc+']','AI')}else{DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 ['+res.item+'，'+res.qty+'，'+lc+']','AI')}await sbPost('inventory',{name:newName||res.item,qty:res.qty,loc:lc,created_at:new Date().toISOString()});await refreshDB();render();toast('✅ '+desc);return}
+if(a==='add_stock'){var lc=res.loc||'常温',dup=DB.inventory.find(function(s){return s.name===res.item&&s.loc===lc});if(dup){var newName=nextItemName(res.item);DB.inventory.push({id:DB.nextInvId++,name:newName,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 ['+newName+'，'+res.qty+'，'+lc+']','AI')}else{DB.inventory.push({id:DB.nextInvId++,name:res.item,qty:res.qty,loc:lc,createdAt:Date.now(),_new:true});addLog('✅ 进货 ['+res.item+'，'+res.qty+'，'+lc+']','AI')}await sbPost('inventory',{name:newName||res.item,qty:res.qty,loc:lc,created_at:nowLocalISO()});await refreshDB();render();toast('✅ '+desc);return}
   if(a==='use_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}var sq=f.qty.match(/^(\d+(?:\.\d+)?)(.*)/);var mq=res.qty?res.qty.match(/^(\d+(?:\.\d+)?)(.*)/):null;if(!mq){try{await sbDelete('inventory','id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('🗑️ 消耗完毕 '+desc);addLog('🗑️ 消耗完毕 '+res.item,'AI');return}if(sq&&(sq[2]===mq[2]||!mq[2])){var n=parseFloat(sq[1])-parseFloat(mq[1]);if(n<=0){try{await sbDelete('inventory','id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('🗑️ 消耗完毕 '+desc);addLog('🗑️ 消耗完毕 '+res.item,'AI')}else{try{await sbPatch('inventory',{qty:n+sq[2]},'id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('✅ '+desc);addLog('✅ '+desc,'AI')}}else{toast('⚠️ 单位不一致，未消耗');addLog('⚠️ 单位不一致，未能消耗 '+res.item,'AI')}return}
   if(a==='set_stock'){var f=DB.inventory.find(function(s){return s.name===res.item});if(!f){toast('❌ 没有 '+res.item);addLog('❌ 未找到 '+res.item,'AI');return}try{await sbPatch('inventory',{qty:res.qty},'id=eq.'+f.id)}catch(e){}await refreshDB();render();toast('✅ '+desc);addLog('✅ '+desc,'AI');return}
   if(a==='delete_stock'){DB=getDB();var items=DB.inventory.filter(function(s){return s.name===res.name});if(items.length===0){toast('❌ 没有 '+res.name);addLog('❌ 未找到 '+res.name,'AI');return}items.forEach(function(it){saveUndoItem({name:it.name,qty:it.qty,loc:it.loc,created_at:it.created_at||it.createdAt,ts:Date.now()})});try{await sbDelete('inventory','name=eq.'+encodeURIComponent(res.name))}catch(e){}await refreshDB();render();toast('🗑️ '+desc);addLog('🗑️ '+desc,'AI');return}
@@ -501,23 +511,25 @@ function startListening(){
     finalTranscript='';isListening=true;userStoppedRecognition=false;aR.innerHTML='';vC.classList.remove('show');
     var r=new SR();r.lang='zh-CN';r.continuous=true;r.interimResults=true;r.maxAlternatives=1;
     r.onstart=function(){setStatus('listening','🎤 聆听中... 再次点击停止');mB.classList.add('listening');mB.textContent='🔴';fL.textContent='点击停止';fL.classList.add('active')};
-    r.onresult=function(e){var im='';for(var i=e.resultIndex;i<e.results.length;i++){var t=e.results[i][0].transcript;if(e.results[i].isFinal)finalTranscript+=t;else im+=t}rT.textContent=finalTranscript+im;vC.classList.add('show')};
+    r.onresult=function(e){var im='';for(var i=e.resultIndex;i<e.results.length;i++){var t=e.results[i][0].transcript;if(e.results[i].isFinal)finalTranscript+=t;else im+=t}rT.textContent=finalTranscript+im;vC.classList.add('show');clearTimeout(silenceTimer);if(finalTranscript.trim()&&!im){silenceTimer=setTimeout(function(){if(isListening&&finalTranscript.trim())stopListening(false)},2000)}};
     r.onerror=function(e){if(e.error==='not-allowed'){setStatus('idle','⚠️ 需允许麦克风');toast('⚠️ 需要麦克风权限')}stopListening(true)};
     r.onend=function(){if(isListening&&!userStoppedRecognition){try{r.start()}catch(e){}}};recognition=r;r.start()})
   .catch(function(){setStatus('idle','⚠️ 麦克风权限被拒绝');toast('⚠️ 请在浏览器中允许麦克风权限')})}
 
-async function stopListening(quiet){
+async function stopListening(quiet){clearTimeout(silenceTimer);
   isListening=false;userStoppedRecognition=true;if(recognition){try{recognition.stop()}catch(e){}recognition=null}
   mB.classList.remove('listening');mB.textContent='🎤';fL.textContent='点击说话';fL.classList.remove('active');
   if(!quiet&&finalTranscript.trim()){
+    if(aiBusy)return;
+    aiBusy=true;
     aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI 分析中...</span></div>';
     setStatus('processing','🤖 AI分析中...');
-try{var r=await aiAnalyze(finalTranscript,pendingContext);pendingContext=null;var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';var si=ie?'<span class="icon-result fail">✕</span>':'<span class="icon-result ok">✓</span>';
+try{var r=await aiAnalyze(finalTranscript,pendingContext);pendingContext=null,silenceTimer=null,aiBusy=false;var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';var si=ie?'<span class="icon-result fail">✕</span>':'<span class="icon-result ok">✓</span>';
       var h='<div style="display:flex;align-items:center">'+si+' <span>📝 '+(lastResult.desc||'操作成功')+'</span></div>';
       if(lastResult.action==='new_location')h+='<div style="margin-top:4px"><span class="tag">新位置</span> <span class="key">'+lastResult.loc+'</span></div>';
       else if(lastResult.action==='ask_qty')h+='<div style="margin-top:4px"><span class="tag">追问</span> '+lastResult.prompt+'</div>';
-      aR.innerHTML=h;setStatus('done','✅ 已完成');if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item,finalTranscript)})}
-    catch(e){aR.innerHTML='<div><span style="color:#e74c3c">❌</span> <span>AI请求失败: '+e.message+'</span></div>';setStatus('idle','❌ 分析失败')}}
+      aR.innerHTML=h;setStatus('done','✅ 已完成');if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item,finalTranscript)});aiBusy=false}
+    catch(e){aiBusy=false;aR.innerHTML='<div><span style="color:#e74c3c">❌</span> <span>AI请求失败: '+e.message+'</span></div>';setStatus('idle','❌ 分析失败')}}
   else if(!quiet){setStatus('idle','就绪，点击 🎤 开始语音输入')}}
 
 mB.addEventListener('click',function(){if(isListening)stopListening(false);else startListening()});
@@ -534,13 +546,14 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
   document.getElementById('textInput').addEventListener('keydown', function(e){ if(e.key==='Enter') submitTextInput(); });
   function submitTextInput(){
     var txt=document.getElementById('textInput').value.trim();
-    if(!txt) return;
+    if(!txt||aiBusy){if(aiBusy)toast('⏳ 正在处理上一条消息，请稍候');return}
+    aiBusy=true;
     document.getElementById('textInput').value = '';
     setStatus('processing','AI分析中...');
     vC.classList.add('show');
     rT.textContent = '打字: '+txt;
     aR.innerHTML='<div class="sp-wrap"><div class="spinner"></div><span class="sp-label">DeepSeek AI分析中...</span></div>';
-    aiAnalyze(txt,pendingContext).then(function(r){pendingContext=null;
+    aiAnalyze(txt,pendingContext).then(function(r){pendingContext=null,silenceTimer=null,aiBusy=false;
       var results=Array.isArray(r)?r:[r];var lastResult=Array.isArray(r)?r[0]:r;var ie=lastResult.action==='unknown';
       var si=ie?'<span class="icon-result fail">✕</span>':'<span class="icon-result ok">✓</span>';
       var h='<div style=display:flex;align-items:center>'+si+' <span> '+(lastResult.desc||'操作成功')+'</span></div>';
@@ -548,6 +561,7 @@ document.getElementById('newLocNo').addEventListener('click',function(){nC.class
       else if(lastResult.action==='ask_qty')h+='<div style=margin-top:4px><span class=tag>追问</span> '+lastResult.prompt+'</div>';
       aR.innerHTML=h; setStatus('done','已完成'); if(typeof results!=='undefined'&&results)results.forEach(function(item){execAI(item,txt)});
     }).catch(function(e){
+      aiBusy=false;
       aR.innerHTML='<div><span style=color:#e74c3c>X</span> <span>AI请求失败: '+e.message+'</span></div>';
       setStatus('idle','分析失败');
     });
